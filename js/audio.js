@@ -1,8 +1,8 @@
 // Tiny WebAudio blip synth. Muted by default; toggle persists in localStorage.
 'use strict';
 const Sfx = {
-  ctx: null, muted: localStorage.getItem('von_muted') !== '0', last: {},
-  toggle() { this.muted = !this.muted; localStorage.setItem('von_muted', this.muted ? '1' : '0'); if (!this.muted) { this.ensure(); this.play('ui'); } },
+  ctx: null, muted: localStorage.getItem('ww_muted') !== '0', last: {},
+  toggle() { this.muted = !this.muted; localStorage.setItem('ww_muted', this.muted ? '1' : '0'); if (!this.muted) { this.ensure(); this.play('ui'); } },
   ensure() {
     if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; } }
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
