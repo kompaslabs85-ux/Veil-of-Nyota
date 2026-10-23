@@ -1,14 +1,9 @@
-// WARDEN WARS — static game data (iteration 2)
+// WARDEN WARS — static game data (iteration 3a; maps in maps.js, text in strings.js)
 'use strict';
 const W = 360, T = 40; let H = 640; // H grows on tall phones to fill the screen
 const C = (c) => c * T + T / 2;
 const GOOD = '#5FD08A', BAD = '#E0605A', GOLD = '#F2C14E', RED = '#C8102E', PLUM = '#1a0f22', INK = '#f3e9d8';
 
-// Act I, Mission 1: "The Thinning Rim"
-const PATH_TILES = [[1,1],[1,3],[7,3],[7,6],[1,6],[1,9],[7,9],[7,12],[4,12],[4,13]];
-const PATH = PATH_TILES.map(([c, r]) => ({ x: C(c), y: C(r) }));
-const HERO_SPOT = [4,5];
-const BUILD_SPOTS = [[0,2],[2,2],[5,2],[3,4],[6,4],[2,5],[8,5],[0,7],[3,7],[5,7],[8,8],[2,10],[5,10],[8,11],[5,11],[2,12],[3,13],[6,13]];
 
 // Damage type x armour class (impl-spec DMG_MATRIX)
 const DMG_MATRIX = {
@@ -19,16 +14,16 @@ const DMG_MATRIX = {
 };
 
 const FACTIONS = [
-  { key:'stone', name:'Stonewardens', full:'Stonewardens of Kagoro', accent:'#7fa6c9', playable:true,
+  { key:'stone', name:'Rimehold Wardens', full:'Rimehold Wardens', accent:'#2EC4B6', playable:true,
     blurb:'Living granite. Pierce armour, hold the line. Shrine holds +5 lives.',
     tradeoff:'Petrified: towers can never be sold.',
-    hero:{ key:'thandeka', name:'Thandeka', title:'Warden of Kagoro', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:"Mountain's Oath",
-      abilityDesc:'A crystal wall holds every Hollow on the lane for 5s.', cd:30 },
+    hero:{ key:'thandeka', name:'Thandeka', title:'Warden of Rimehold', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:"Mountain's Oath",
+      abilityDesc:'Crystal shards pin every ground Hollow near the hero for 4s.', cd:30 },
     towers:['monolith','bastion','drum','spire','skyhook'] },
-  { key:'forge', name:'Emberforged', full:'Emberforged of Zuri', accent:'#ff8a2a', playable:true,
+  { key:'forge', name:'Ashgate Covenant', full:'Ashgate Covenant', accent:'#E8702A', playable:true,
     blurb:'Molten splash and raw burst. Highest damage in the valley.',
     tradeoff:'Heat: sustained fire overheats a tower for 4s.',
-    hero:{ key:'jabari', name:'Jabari', title:'Forgemaster of Zuri', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Molten Anvil',
+    hero:{ key:'jabari', name:'Jabari', title:'Forgemaster of Ashgate', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Molten Anvil',
       abilityDesc:'Drop a burning anvil on the lead Hollow: big damage and stun.', cd:25 },
     towers:['cannon','slag','lance','bell','kiln'] },
 ];
@@ -36,43 +31,43 @@ const FACTIONS = [
 // tiers = stats for L1, L3, L4 (L2 = midpoint, L5-10 scale from L4). cost = build cost / upgrade-to-L3 / upgrade-to-L4.
 // air: 'no' | 'half' | 'yes' | 'only'.  counter: who it beats.  branches: chosen at L4 (GDD Table 16).
 const TOWERS = {
-  monolith:{ faction:'stone', sprite:'monolith', name:['Standing Stone','Ward Pillar','Crowned Monolith'], kind:'bolt', dtype:'pierce', air:'half',
+  monolith:{ faction:'stone', sprite:'monolith', kind:'bolt', dtype:'pierce', air:'half',
     tiers:[{cost:70,dmg:19,rate:1.1,range:95},{cost:70,dmg:35,rate:1.05,range:100},{cost:115,dmg:60,rate:1.0,range:108}],
     counter:'Plate (Vowknights)', desc:'Steady piercing bolts. Cracks armour.',
     branches:[{ key:'A', name:'Crowned', desc:'Every shot stuns 1.0s', mod:{stun:1.0} },{ key:'B', name:'Granite Fist', desc:'+30% vs plate', mod:{vsPlate:0.3} }] },
-  bastion:{ faction:'stone', sprite:'bastion-ring', name:['Ward Ring','Bastion Ring','Kagoro Bulwark'], kind:'block', dtype:'blunt', air:'no',
+  bastion:{ faction:'stone', sprite:'bastion-ring', kind:'block', dtype:'blunt', air:'no',
     tiers:[{cost:60,dmg:6,rate:0.8,range:62,hold:0.5},{cost:65,dmg:11,rate:0.75,range:68,hold:0.7},{cost:105,dmg:18,rate:0.7,range:74,hold:0.9}],
     counter:'Fast runners (Couriers)', desc:'Stone ring grips the lane: holds ground Hollow in place.',
     branches:[{ key:'A', name:'Taunting Wall', desc:'Holds 50% longer', mod:{holdX:0.5} },{ key:'B', name:'Living Rock', desc:'Regains 1 life every 2 waves', mod:{regen:1} }] },
-  drum:{ faction:'stone', sprite:'quake-drum', name:['Hide Drum','Earth Drum','Mountain Heart'], kind:'slam', dtype:'blunt', air:'no',
+  drum:{ faction:'stone', sprite:'quake-drum', kind:'slam', dtype:'blunt', air:'no',
     tiers:[{cost:90,dmg:12,rate:1.6,range:72},{cost:90,dmg:22,rate:1.5,range:78},{cost:145,dmg:37,rate:1.4,range:86}],
     shred:0.3, counter:'Swarms (Maidens)', desc:'Ground slam hits all nearby and shreds armour.',
     branches:[{ key:'A', name:'Deep Quake', desc:'Shred raised to 45%', mod:{shred:0.45} },{ key:'B', name:'Thunder Hide', desc:'Knocks Hollow back', mod:{knock:18} }] },
-  spire:{ faction:'stone', sprite:'seam-spire', name:['Vein Shard','Seam Spire','Ember Lode'], kind:'bolt', dtype:'arcane', air:'yes',
+  spire:{ faction:'stone', sprite:'seam-spire', kind:'bolt', dtype:'arcane', air:'yes',
     tiers:[{cost:125,dmg:44,rate:2.6,range:140},{cost:120,dmg:78,rate:2.5,range:148},{cost:190,dmg:130,rate:2.4,range:160}],
     counter:'Bosses & arcane (Sirens)', desc:'Slow crystal sniper. Weak vs swarms and fast runners.',
     branches:[{ key:'A', name:'Twin Seam', desc:'+1 pierce target', mod:{extra:1} },{ key:'B', name:'Kingbreaker', desc:'+40% vs bosses', mod:{vsBoss:0.4} }] },
-  skyhook:{ faction:'stone', sprite:'skyhook-sling', name:['Hook Sling','Skyhook Sling','Sky Anchor'], kind:'bolt', dtype:'pierce', air:'only',
+  skyhook:{ faction:'stone', sprite:'skyhook-sling', kind:'bolt', dtype:'pierce', air:'only',
     tiers:[{cost:85,dmg:26,rate:0.9,range:130,ground:1.2},{cost:85,dmg:44,rate:0.9,range:136,ground:1.4},{cost:135,dmg:66,rate:0.9,range:144,ground:1.6}], // iter2d: reined in (L4 was 80 dmg / 0.8s)
     counter:'Flyers (Harpies, Moths)', desc:'Chains flyers and drags them to the ground.',
     branches:[{ key:'A', name:'Chain Hooks', desc:'Chains to 2 flyers', mod:{extra:1} },{ key:'B', name:'Earthbinder', desc:'+60% vs grounded', mod:{vsGrounded:0.6} }] },
-  cannon:{ faction:'forge', sprite:'bellows-cannon', name:['Clay Kiln','Bellows Cannon','Grand Furnace'], kind:'shell', dtype:'fire', air:'no',
+  cannon:{ faction:'forge', sprite:'bellows-cannon', kind:'shell', dtype:'fire', air:'no',
     tiers:[{cost:80,dmg:16,rate:1.25,range:100,splash:42},{cost:80,dmg:28,rate:1.2,range:105,splash:48},{cost:130,dmg:46,rate:1.15,range:112,splash:56}],
     heat:15, counter:'Swarms (Maidens, Couriers)', desc:'Splash shells. Heats up fast.',
     branches:[{ key:'A', name:'Great Bore', desc:'Splash 70', mod:{splash:70} },{ key:'B', name:'Twin Shells', desc:'Fires two shells', mod:{twin:1} }] },
-  slag:{ faction:'forge', sprite:'slag-thrower', name:['Slag Pot','Slag Thrower','Magma Sling'], kind:'slag', dtype:'fire', air:'no',
+  slag:{ faction:'forge', sprite:'slag-thrower', kind:'slag', dtype:'fire', air:'no',
     tiers:[{cost:90,dmg:8,rate:1.8,range:95,burn:10},{cost:90,dmg:14,rate:1.7,range:100,burn:18},{cost:145,dmg:22,rate:1.6,range:108,burn:28}],
     heat:18, counter:'Heavies (Vowknights)', desc:'Leaves burning ground that ignores armour.',
     branches:[{ key:'A', name:'Deep Pools', desc:'Pools last twice as long', mod:{poolX:2} },{ key:'B', name:'Tar Pitch', desc:'Pools slow 25%', mod:{slow:0.25} }] },
-  lance:{ faction:'forge', sprite:'ember-lance', name:['Ember Rod','Ember Lance','Starsteel Spear'], kind:'beam', dtype:'arcane', air:'half',
+  lance:{ faction:'forge', sprite:'ember-lance', kind:'beam', dtype:'arcane', air:'half',
     tiers:[{cost:120,dmg:42,rate:2.1,range:135},{cost:120,dmg:72,rate:2.0,range:145},{cost:190,dmg:115,rate:1.9,range:155}],
     pierce:0.4, heat:26, counter:'Lines & Sirens', desc:'Line beam pierces every Hollow in its path.',
     branches:[{ key:'A', name:'Piercing Star', desc:'Armour pierce 80%', mod:{pierce:0.8} },{ key:'B', name:'Full Length', desc:'+25% damage, full lane', mod:{dmgX:0.25} }] },
-  bell:{ faction:'forge', sprite:'anvil-bell', name:['Anvil Gong','Anvil Bell','Bell of Zuri'], kind:'aura', dtype:'blunt', air:'half',
-    tiers:[{cost:75,dmg:5,rate:1.5,range:80,armourDown:0.15},{cost:75,dmg:9,rate:1.4,range:86,armourDown:0.22},{cost:120,dmg:15,rate:1.3,range:94,armourDown:0.3}],
+  bell:{ faction:'forge', sprite:'anvil-bell', kind:'aura', dtype:'blunt', air:'half',
+    tiers:[{cost:75,dmg:5,rate:1.5,range:80,armourDown:0.10},{cost:75,dmg:9,rate:1.4,range:86,armourDown:0.18},{cost:120,dmg:15,rate:1.3,range:94,armourDown:0.25}],
     counter:'Plate & support (cools heat)', desc:'Each toll strips armour and cools nearby forges.',
     branches:[{ key:'A', name:'War Bell', desc:'Nearby towers +10% damage', mod:{buff:0.1} },{ key:'B', name:'Sky Toll', desc:'Full damage to air, +50% range vs air', mod:{airFull:1} }] },
-  kiln:{ faction:'forge', sprite:'spark-kiln', name:['Spark Pot','Spark Kiln','Starfire Kiln'], kind:'flak', dtype:'fire', air:'yes',
+  kiln:{ faction:'forge', sprite:'spark-kiln', kind:'flak', dtype:'fire', air:'yes',
     tiers:[{cost:85,dmg:18,rate:1.0,range:130,cloud:32},{cost:85,dmg:31,rate:0.95,range:138,cloud:36},{cost:135,dmg:50,rate:0.9,range:146,cloud:40}], // iter2d: Forge anti-air buff (sims: all Forge leaks were flyers)
     heat:14, counter:'Flyers (Harpies, Moths)', desc:'Flak clouds burst in the air. x1.6 vs flyers.',
     branches:[{ key:'A', name:'Starburst', desc:'Clouds 1.5x larger', mod:{cloudX:0.5} },{ key:'B', name:'Ash Net', desc:'Flyers slowed 30%', mod:{airSlow:0.3} }] },
@@ -101,43 +96,40 @@ function upCost(key, lvl) { // cost to go lvl -> lvl+1
   return Math.round(t[2].cost * (0.55 + 0.12 * (lvl - 4))); // iter2d: was 0.6 + 0.18/level
 }
 const spriteTier = (lvl) => lvl >= 7 ? 2 : lvl >= 4 ? 1 : 0; // milestones 1/4/7, L10 crown aura
-function towerName(key, lvl) { return TOWERS[key].name[spriteTier(lvl)]; }
+function towerName(key, lvl, branch) { const b = branch && lvl >= BRANCH_LVL ? TOWERS[key].branches.find(x => x.key === branch).name : ''; return TOWER_NAMES[key] + (b ? ' · ' + b : ''); }
 
-// enemies: aclass = armour class; fly = flyer
+// enemies: aclass = armour class; fly = flyer; size: grunt 0.7 / elite 0.85 / boss 1.6 of the hero's 1.0 (HERO_H)
+const HERO_H = 60;
+const SIZE = { hero: 1.0, tower: 1.1, grunt: 0.7, elite: 0.85, boss: 1.6 };
 const ENEMIES = {
-  husk:  { name:'Shard Maiden', sprite:'shard-maiden', hp:42, spd:36, armour:0, aclass:'flesh', gold:5, lives:1, r:9, sz:30 },
-  ling:  { name:'Scarlet Courier', sprite:'scarlet-courier', hp:26, spd:70, armour:0, aclass:'flesh', gold:4, lives:1, r:7, sz:28 },
-  shard: { name:'Crimson Vowknight', sprite:'crimson-vowknight', hp:100, spd:26, armour:0.5, aclass:'plate', gold:9, lives:2, r:11, sz:38 },
-  harpy: { name:'Harpy-Queen Zeyna', sprite:'harpy-queen-zeyna', hp:50, spd:44, armour:0.1, aclass:'air', gold:7, lives:1, r:10, sz:34, fly:true },
-  moth:  { name:'Moth Enchantress', sprite:'moth-enchantress', hp:48, spd:38, armour:0, aclass:'air', gold:8, lives:1, r:10, sz:32, fly:true, silence:true },
-  siren: { name:'Siren of the Lyre', sprite:'siren-of-the-lyre', hp:80, spd:28, armour:0.2, aclass:'arcane', gold:10, lives:2, r:10, sz:38, heal:true },
-  herald:{ name:'Herald of Kasiri', sprite:'herald-of-kasiri', hp:4800, spd:16, armour:0.33, aclass:'arcane', gold:120, lives:10, r:17, sz:78, boss:true },
+  husk:  { name:'Shard Maiden', sprite:'e_husk', hp:30, spd:36, armour:0, aclass:'flesh', lives:1, r:9, size:'grunt' },
+  ling:  { name:'Scarlet Courier', sprite:'e_ling', hp:20, spd:66, armour:0, aclass:'flesh', lives:1, r:8, size:'grunt' },
+  shard: { name:'Crimson Vowknight', sprite:'e_shard', hp:70, spd:26, armour:0.5, aclass:'plate', lives:2, r:11, size:'elite' },
+  harpy: { name:'Harpy-Queen Zeyna', sprite:'e_harpy', hp:36, spd:44, armour:0.1, aclass:'air', lives:1, r:10, size:'elite', fly:true },
+  moth:  { name:'Moth Enchantress', sprite:'e_moth', hp:34, spd:38, armour:0, aclass:'air', lives:1, r:10, size:'grunt', fly:true, silence:true },
+  siren: { name:'Siren of the Lyre', sprite:'e_siren', hp:56, spd:28, armour:0.2, aclass:'arcane', lives:2, r:10, size:'elite', heal:true },
+  herald:{ name:'Herald of Kasiri', sprite:'e_herald1', hp:1900, spd:11, armour:0.33, aclass:'arcane', lives:10, r:17, size:'boss', boss:true },
 };
-const WAVES = [ // rebalanced (QA baseline): pressure ramps through waves 3-8; swarms/runners punish slow snipers
-  [['husk',8,1.2]],
-  [['husk',10,0.9],['ling',6,0.55]],
-  [['ling',16,0.42],['harpy',4,1.0],['husk',6,0.7]],
-  [['husk',12,0.6],['harpy',3,1.1],['shard',5,1.4],['ling',10,0.35]], // iter2b: flyers introduced earlier
-  [['ling',14,0.34],['harpy',5,0.9],['siren',3,1.8],['husk',12,0.55]],
-  [['shard',5,1.3],['harpy',6,0.85],['ling',14,0.36]], // iter2b: softened (was 7 shard / 9 harpy / 16 ling: 0 -> 18 leak cliff)
-  [['husk',20,0.4],['moth',5,1.0],['shard',7,1.0],['siren',2,1.5]],
-  [['ling',22,0.3],['siren',3,1.3],['shard',7,0.95],['harpy',6,0.7]], // iter2d: softened Stone spike (was 28 ling / 4 siren / 9 shard)
-  [['husk',18,0.45],['harpy',8,0.6],['moth',3,1.1],['shard',8,0.9]], // iter2d: was 10 harpy / 4 moth / 10 shard
-  [['husk',12,0.5],['siren',4,1.2],['herald',1,1],['harpy',8,0.5],['ling',14,0.3]],
+const UNIT_HP_GROWTH = 0.16; // per-wave unit HP growth; wave totals follow waveBudget() in maps.js
+const MINI_HP_X = 5;         // mini-boss = a 5x HP champion of its type (elite-sized+)
+const GOLD_PER_HP = 1 / 12;  // kills pay ~1g per 12 HP
+const CLEAR_BONUS = (w) => 15 + 3 * w;
+const START_GOLD = 220, START_LIVES = 20;
+const BANK_SOFT_CAP = 150;   // design target: bank stays at or below this between waves (measured by tools/sim.py)
+const STAKES = [ // all paid up front as a share of the bank; payout = stake * (1 + mult) on a clean (no-leak) wave
+  { key:'flutter', name:'Flutter', pct:0.15, mult:0.8 },
+  { key:'double', name:'Double', pct:0.35, mult:1.5 },
+  { key:'allin', name:'All-in', pct:1.0, mult:2.2 },
 ];
-const waveHpScale = (w) => 1 + 0.31 * w + 0.032 * w * w; // iter2f: halfway between iter2c and iter2d
-const KILL_GOLD = 1.2; // iter2f (iter2d 1.25): kill reward multiplier
-const START_GOLD = 250, START_LIVES = 20;
-const STAKE_WAVES = [2, 5, 8, 9]; // offered before waves 3,6,9 and the boss wave (0-based)
 
 // ---------- Hero skills (GDD Table 10) ----------
 const HERO_LVL_XP = [20, 45, 80, 125, 180, 250, 330];
 const SKILLS = [
   { key:'crystal', f:'stone', name:'Crystal Warden', desc:'Hero +25% damage', w:'c' },
   { key:'avalanche', f:'stone', name:'Avalanche', desc:"Mountain's Oath cooldown -25%", w:'r' },
-  { key:'chains', f:'stone', name:'Skyhook Chains', desc:'Skyhooks ground flyers +50% longer', w:'r' },
+  { key:'chains', f:'stone', name:'Harpoon Chains', desc:'Gale Harpoons ground flyers +50% longer', w:'r' },
   { key:'pride', f:'stone', name:'Petrified Pride', desc:'+3 lives now', w:'c' },
-  { key:'echo', f:'stone', name:'Echo Oath', desc:'Monoliths +15% damage', w:'c' },
+  { key:'echo', f:'stone', name:'Echo Oath', desc:'Rune Menhirs +15% damage', w:'c' },
   { key:'vein', f:'stone', name:'Vein Bloom', desc:'Spires +20% damage, +10 range', w:'e' },
   { key:'mastery', f:'forge', name:'Forge Mastery', desc:'Heat builds 25% slower', w:'c' },
   { key:'chain', f:'forge', name:'Chain Reaction', desc:'Cannon splash +20%', w:'r' },
@@ -175,7 +167,7 @@ const AFFIXES = [
   { key:'swift', name:'Swift', desc:(v)=>`+${v}% hero attack speed`, v:[3,8] },
   { key:'oath', name:'of the Oath', desc:(v)=>`+${v} lives`, v:[1,3] },
   { key:'kin', name:'of Kin', desc:(v)=>`+${v}% tower damage`, v:[2,6] },
-  { key:'towerBoost', name:'Mason-blessed', desc:(v,t)=>`${TOWERS[t]?TOWERS[t].name[1]:'Tower'} +${v}% damage`, v:[6,15] },
+  { key:'towerBoost', name:'Mason-blessed', desc:(v,t)=>`${TOWERS[t]?towerName(t,1):'Tower'} +${v}% damage`, v:[6,15] },
   { key:'skillBoost', name:'Song-bound', desc:(v,t)=>`Boosts skill ${(SKILLS.find(s=>s.key===t)||{}).name}: +${v}% effect`, v:[20,50] },
   { key:'offerBias', name:'Fated', desc:()=>'Skill offers favour rare+', v:[1,1] },
   { key:'skyward', name:'Skyward', desc:(v)=>`+${v}% damage vs flyers`, v:[8,20] },
@@ -183,22 +175,9 @@ const AFFIXES = [
 ];
 // Evolution (GDD Table 14)
 const EVOS = {
-  thandeka:[{ name:'Oathkeeper', bonus:0 },{ name:'Mountain-Sworn', bonus:0.15, lvl:5, cost:3 },{ name:'Living Mountain', bonus:0.35, lvl:10, cost:8 }],
-  jabari:[{ name:'Apprentice of Zuri', bonus:0 },{ name:'Bellows-Master', bonus:0.15, lvl:5, cost:3 },{ name:'Starsteel Smith', bonus:0.35, lvl:10, cost:8 }],
+  thandeka:[{ name:'Oathkeeper', bonus:0 },{ name:'Glacier-Sworn', bonus:0.15, lvl:7, cost:10 },{ name:'Living Mountain', bonus:0.35, lvl:12, cost:20 }],
+  jabari:[{ name:'Apprentice of Ashgate', bonus:0 },{ name:'Bellows-Master', bonus:0.15, lvl:7, cost:10 },{ name:'Starsteel Smith', bonus:0.35, lvl:12, cost:20 }],
 };
 const PROFILE_XP = (lvl) => 60 + lvl * 40; // xp to next profile hero level
 const HERO_MAX_LVL = 15;
 
-const LINES = {
-  mosaBrief: 'The Veil is thinning at Kagoro. Something is walking out of the old shrines. Something that giggles.',
-  heroBrief: { stone:'Shrines don\u2019t giggle.', forge:'Giggling I can handle. It\u2019s the singing that worries me.' },
-  win: 'Those women wore clan bangles. Ours. Find out whose.',
-  heraldIntro: 'Kneel, or don\u2019t. I find both charming.',
-  stake: { 1:['Shard Maiden: \u201cA little flutter? Cute. Like a first date with a curfew.\u201d'], 2:['Herald: \u201cDouble? Oh, now you\u2019re interesting.\u201d'], 3:['Herald: \u201cEverything, darling? Bold. Reckless. Very nearly attractive.\u201d'] },
-  memory: 'Herald: \u201cOne last wager, darling. Your memories against my name.\u201d',
-  raise: ['Shard Maiden: \u201cOoh, changing the rules mid-dance? Cheeky.\u201d','Scarlet Courier: \u201cRaising now? While I\u2019m running? Rude. Respect.\u201d'],
-  won: ['Herald: \u201cFine, you win this round. Don\u2019t let it go to your head.\u201d','Scarlet Courier: \u201cLucky. Ugh. Lucky and smug? Unbearable.\u201d'],
-  lost: ['Herald: \u201cPay up, darling. I accept gold, Ember and humiliation.\u201d','Siren: \u201cI\u2019ll write you a sad song. Short one.\u201d'],
-  heroStake: { stone:['Small bet. Solid footing.','Twice the weight. The mountain can carry it.','All in. Stone doesn\u2019t bluff.','Stone remembers. Stake it.'], forge:['Warm-up round. Just stretching the bellows.','Double the heat. That\u2019s how I like my forges and my odds.','Push it all in, boss. Let it burn.','Memories? I\u2019ll forge new ones.'] },
-  costume: '\u201cMy armour! These were heirlooms!\u201d',
-};

@@ -1,7 +1,7 @@
 // Tiny WebAudio blip synth. Muted by default; toggle persists in localStorage.
 'use strict';
 const Sfx = {
-  ctx: null, muted: localStorage.getItem('ww_muted') !== '0', last: {},
+  ctx: null, muted: localStorage.getItem('ww_muted') === '1', last: {},
   toggle() { this.muted = !this.muted; localStorage.setItem('ww_muted', this.muted ? '1' : '0'); if (!this.muted) { this.ensure(); this.play('ui'); } },
   ensure() {
     if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; } }
@@ -30,6 +30,10 @@ const Sfx = {
       case 'heat': this.tone(90, 0.2, 'square', 0.04); break;
       case 'win': [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.18, 'square', 0.05), i * 120)); break;
       case 'lose': [392, 330, 262, 196].forEach((f, i) => setTimeout(() => this.tone(f, 0.25, 'triangle', 0.06), i * 160)); break;
+      case 'stamp': this.tone(90, 0.12, 'square', 0.08, -40); setTimeout(() => this.tone(60, 0.18, 'sawtooth', 0.05), 60); break;
+      case 'boss': [110, 104, 98].forEach((f, i) => setTimeout(() => this.tone(f, 0.5, 'sawtooth', 0.06, -20), i * 260)); break;
+      case 'avalanche': this.tone(70, 0.9, 'sawtooth', 0.07, -40); setTimeout(() => this.tone(55, 0.7, 'square', 0.04), 200); break;
+      case 'vent': this.tone(180, 0.35, 'triangle', 0.03, 300); break;
       case 'wave': this.tone(330, 0.12, 'square', 0.04); setTimeout(() => this.tone(494, 0.15, 'square', 0.04), 110); break;
     }
   }
