@@ -1,4 +1,4 @@
-# WARDEN WARS (iteration 2)
+# WARDEN WARS (iteration 3b)
 
 Mobile-first tower defence on a vanilla canvas. It is a static site with no build step.
 

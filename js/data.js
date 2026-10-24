@@ -13,20 +13,53 @@ const DMG_MATRIX = {
   arcane:{ flesh:0.9, plate:1.1, arcane:1.35, air:1.1 },
 };
 
+// iter3b: five factions from five worlds and eras. `base` = the shared tower kit / rules they draw on (stone = hold & pierce,
+// forge = burst & heat); each faction re-skins that kit (palette tint, tower names, hero, ability) and keeps its own trade-off.
+// All five draw on the same mystical resource: Nyota's Veil-light, which always takes something back.
 const FACTIONS = [
-  { key:'stone', name:'Rimehold Wardens', full:'Rimehold Wardens', accent:'#2EC4B6', playable:true,
-    blurb:'Living granite. Pierce armour, hold the line. Shrine holds +5 lives.',
-    tradeoff:'Petrified: towers can never be sold.',
-    hero:{ key:'thandeka', name:'Thandeka', title:'Warden of Rimehold', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:"Mountain's Oath",
-      abilityDesc:'Crystal shards pin every ground Hollow near the hero for 4s.', cd:30 },
+  { key:'sun', base:'forge', name:'Sunveil', full:'Sunveil Dominion', accent:'#F2B134', playable:true, era:'Kush · Iron Age',
+    tint:'sepia(0.35) saturate(1.5) hue-rotate(-12deg) brightness(1.08)', ab:'SUN',
+    lore:'Pyramid priests bank Veil-light in gold. Every blessing burns hotter than it should.',
+    hero:{ key:'amanirenas', spr:'thandeka', tint:'sepia(0.25) saturate(1.3) hue-rotate(-10deg)', name:'Amanikhatashan', title:'Candace of the Sun Gate', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Noon Judgement',
+      abilityDesc:'A sun-lance strikes the lead Hollow: big damage and stun.', cd:25 },
+    towers:['cannon','slag','lance','bell','kiln'] },
+  { key:'jade', base:'stone', name:'Jade Court', full:'Jade Court', accent:'#4FC28A', playable:true, era:'Imperial E. Asia',
+    tint:'hue-rotate(95deg) saturate(1.15)', ab:'INK',
+    lore:'Scholars write Veil-light in silk and lantern-ink. What is written stays written.',
+    hero:{ key:'meilin', spr:'thandeka', tint:'hue-rotate(110deg) saturate(0.9)', name:'Lady Meilin', title:'Grand Scholar of the Jade Court', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:'Edict of Stillness',
+      abilityDesc:'An ink edict binds every ground Hollow near the hero for 4s.', cd:30 },
     towers:['monolith','bastion','drum','spire','skyhook'] },
-  { key:'forge', name:'Ashgate Covenant', full:'Ashgate Covenant', accent:'#E8702A', playable:true,
-    blurb:'Molten splash and raw burst. Highest damage in the valley.',
-    tradeoff:'Heat: sustained fire overheats a tower for 4s.',
-    hero:{ key:'jabari', name:'Jabari', title:'Forgemaster of Ashgate', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Molten Anvil',
-      abilityDesc:'Drop a burning anvil on the lead Hollow: big damage and stun.', cd:25 },
+  { key:'stone', base:'stone', name:'Frostmark', full:'Frostmark Holds', accent:'#2EC4B6', playable:true, era:'Norse fjords',
+    tint:'', ab:'OATH',
+    lore:'Runesmiths cut Veil-light into granite. A carved rune holds forever.',
+    hero:{ key:'thandeka', spr:'thandeka', name:'Sigrun', title:'Runesmith of Frostmark', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:'Shieldwall Oath',
+      abilityDesc:'Rune-shards pin every ground Hollow near the hero for 4s.', cd:30 },
+    towers:['monolith','bastion','drum','spire','skyhook'] },
+  { key:'forge', base:'forge', name:'Foundry Row', full:'Foundry Row Guild', accent:'#E8702A', playable:true, era:'Victorian',
+    tint:'', ab:'ANVIL',
+    lore:'Brass engines boil Veil-light into steam. Run them hard and the pressure bites back.',
+    hero:{ key:'jabari', spr:'jabari', name:'Jabari', title:'Chief Engineer of Foundry Row', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Steam Hammer',
+      abilityDesc:'Drop a steam hammer on the lead Hollow: big damage and stun.', cd:25 },
+    towers:['cannon','slag','lance','bell','kiln'] },
+  { key:'star', base:'forge', name:'Starfall Ascendancy', full:'Starfall Ascendancy', accent:'#9FB8FF', playable:true, era:'Far future',
+    tint:'hue-rotate(200deg) saturate(1.2) brightness(1.1)', ab:'LANCE',
+    lore:'An orbital order forges Veil-light into hard light. Precise, brilliant, and it overheats.',
+    hero:{ key:'vael', spr:'jabari', tint:'hue-rotate(200deg) saturate(0.8) brightness(1.1)', name:'Vael Orin', title:'Lightwright of the Ascendancy', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Orbital Lance',
+      abilityDesc:'A light-lance from orbit hits the lead Hollow: big damage and stun.', cd:25 },
     towers:['cannon','slag','lance','bell','kiln'] },
 ];
+const FAC = (k) => FACTIONS.find(f => f.key === k) || FACTIONS[2];
+const BASE = (k) => FAC(k).base;
+const HERO_FAC = (hk) => FACTIONS.find(f => f.hero.key === hk);
+// per-faction tower display names (falls back to TOWER_NAMES)
+const FAC_TNAMES = {
+  sun: { cannon:'Sun Mortar', slag:'Solar Brazier', lance:'Obelisk Ray', bell:'Temple Gong', kiln:'Falcon Pyre' },
+  jade: { monolith:'Ink Stele', bastion:'Silk Banner Wall', drum:'Thunder Drum', spire:'Lantern Pagoda', skyhook:'Kite Snare' },
+  forge: { cannon:'Steam Mortar', slag:'Boiler Sprayer', lance:'Tesla Lance', bell:'Clocktower Bell', kiln:'Brass Flak Gun' },
+  star: { cannon:'Plasma Battery', slag:'Ion Field', lance:'Hardlight Lance', bell:'Resonance Pylon', kiln:'Orbital Flak' },
+};
+const tName = (k, f) => (FAC_TNAMES[f || (typeof P !== 'undefined' && P && P.faction)] || {})[k] || TOWER_NAMES[k];
+
 
 // tiers = stats for L1, L3, L4 (L2 = midpoint, L5-10 scale from L4). cost = build cost / upgrade-to-L3 / upgrade-to-L4.
 // air: 'no' | 'half' | 'yes' | 'only'.  counter: who it beats.  branches: chosen at L4 (GDD Table 16).
@@ -96,7 +129,7 @@ function upCost(key, lvl) { // cost to go lvl -> lvl+1
   return Math.round(t[2].cost * (0.55 + 0.12 * (lvl - 4))); // iter2d: was 0.6 + 0.18/level
 }
 const spriteTier = (lvl) => lvl >= 7 ? 2 : lvl >= 4 ? 1 : 0; // milestones 1/4/7, L10 crown aura
-function towerName(key, lvl, branch) { const b = branch && lvl >= BRANCH_LVL ? TOWERS[key].branches.find(x => x.key === branch).name : ''; return TOWER_NAMES[key] + (b ? ' · ' + b : ''); }
+function towerName(key, lvl, branch) { const b = branch && lvl >= BRANCH_LVL ? TOWERS[key].branches.find(x => x.key === branch).name : ''; return tName(key) + (b ? ' · ' + b : ''); }
 
 // enemies: aclass = armour class; fly = flyer; size: grunt 0.7 / elite 0.85 / boss 1.6 of the hero's 1.0 (HERO_H)
 const HERO_H = 60;
@@ -108,8 +141,12 @@ const ENEMIES = {
   harpy: { name:'Harpy-Queen Zeyna', sprite:'e_harpy', hp:36, spd:44, armour:0.1, aclass:'air', lives:1, r:10, size:'elite', fly:true },
   moth:  { name:'Moth Enchantress', sprite:'e_moth', hp:34, spd:38, armour:0, aclass:'air', lives:1, r:10, size:'grunt', fly:true, silence:true },
   siren: { name:'Siren of the Lyre', sprite:'e_siren', hp:56, spd:28, armour:0.2, aclass:'arcane', lives:2, r:10, size:'elite', heal:true },
-  herald:{ name:'Herald of Kasiri', sprite:'e_herald1', hp:1900, spd:11, armour:0.33, aclass:'arcane', lives:10, r:17, size:'boss', boss:true },
+  // iter3b tier-1 mid-bosses (wave 25), themed to each map; repainted from the Herald's v2 art (see art.js SPRITE_VARIANTS)
+  vg_glacier:{ name:'Rime Jarl Colossus', sprite:'e_vg_glacier', hp:1900, spd:12, armour:0.4, aclass:'plate', lives:8, r:16, size:'boss', boss:true, tier:1 },
+  vg_foundry:{ name:'Brass Juggernaut', sprite:'e_vg_foundry', hp:1900, spd:12, armour:0.4, aclass:'plate', lives:8, r:16, size:'boss', boss:true, tier:1 },
+  herald:{ name:'Herald of Kasiri', tier:2, sprite:'e_herald1', hp:1900, spd:11, armour:0.33, aclass:'arcane', lives:10, r:17, size:'boss', boss:true },
 };
+const WEFF = (w) => w <= 10 ? w : 10 + (w - 10) * 0.6; // iter3b: 50-wave levels, growth halves after wave 10
 const UNIT_HP_GROWTH = 0.16; // per-wave unit HP growth; wave totals follow waveBudget() in maps.js
 const MINI_HP_X = 5;         // mini-boss = a 5x HP champion of its type (elite-sized+)
 const GOLD_PER_HP = 1 / 12;  // kills pay ~1g per 12 HP
@@ -175,8 +212,11 @@ const AFFIXES = [
 ];
 // Evolution (GDD Table 14)
 const EVOS = {
-  thandeka:[{ name:'Oathkeeper', bonus:0 },{ name:'Glacier-Sworn', bonus:0.15, lvl:7, cost:10 },{ name:'Living Mountain', bonus:0.35, lvl:12, cost:20 }],
-  jabari:[{ name:'Apprentice of Ashgate', bonus:0 },{ name:'Bellows-Master', bonus:0.15, lvl:7, cost:10 },{ name:'Starsteel Smith', bonus:0.35, lvl:12, cost:20 }],
+  thandeka:[{ name:'Rune Apprentice', bonus:0 },{ name:'Glacier-Sworn', bonus:0.15, lvl:7, cost:10 },{ name:'Living Mountain', bonus:0.35, lvl:12, cost:20 }],
+  amanirenas:[{ name:'Priestess of the Sun Gate', bonus:0 },{ name:'Daughter of Amun', bonus:0.15, lvl:7, cost:10 },{ name:'Candace Ascendant', bonus:0.35, lvl:12, cost:20 }],
+  meilin:[{ name:'Hanlin Scholar', bonus:0 },{ name:'Lantern Sage', bonus:0.15, lvl:7, cost:10 },{ name:'Jade Chancellor', bonus:0.35, lvl:12, cost:20 }],
+  vael:[{ name:'Cadet of the Ring', bonus:0 },{ name:'Lightwright', bonus:0.15, lvl:7, cost:10 },{ name:'Starfall Exarch', bonus:0.35, lvl:12, cost:20 }],
+  jabari:[{ name:'Apprentice of Foundry Row', bonus:0 },{ name:'Bellows-Master', bonus:0.15, lvl:7, cost:10 },{ name:'Starsteel Smith', bonus:0.35, lvl:12, cost:20 }],
 };
 const PROFILE_XP = (lvl) => 60 + lvl * 40; // xp to next profile hero level
 const HERO_MAX_LVL = 15;

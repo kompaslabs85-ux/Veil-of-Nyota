@@ -17,8 +17,20 @@ function loadArt(done) {
   });
 }
 // Draw a sprite bottom-centre anchored at (x,y), logical height h. Never upscales: h is clamped to the loaded tier's pixels / KPX.
+// iter3b: faction identity. Hero aliases (h_/hs_<heroKey>N -> the hero's painted base sprite, tinted) and tower tints
+// (t_* drawn in the active faction's palette). Tints are baked once per sprite into an offscreen canvas (no per-frame filter).
+const TINTED = {}; let TINT_FAC = null; // TINT_FAC overrides the tower palette (faction-select cards)
+function tinted(n, im, f) { if (!f) return im; const k = n + '|' + f; if (TINTED[k]) return TINTED[k];
+  try { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d');
+    if (!('filter' in x)) return (TINTED[k] = im); x.filter = f; x.drawImage(im, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height; return (TINTED[k] = c); } catch (e) { return (TINTED[k] = im); } }
+const SPRITE_VARIANTS = { e_vg_glacier: ['e_herald2', 'hue-rotate(170deg) saturate(1.2) brightness(1.05)'], e_vg_foundry: ['e_herald2', 'sepia(0.7) hue-rotate(-15deg) saturate(1.7)'] };
+function spriteImg(n) {
+  if (SPRITE_VARIANTS[n]) { const [b, f] = SPRITE_VARIANTS[n]; return IMG[b] ? tinted(b, IMG[b], f) : null; }
+  if (IMG[n]) { if (n.startsWith('t_') && typeof FAC === 'function') { const fk = TINT_FAC || (typeof P !== 'undefined' && P && P.faction); const f = fk && FAC(fk).tint; if (f) return tinted(n, IMG[n], f); } return IMG[n]; }
+  const m = /^(hs?_)([a-z]+)(\d)$/.exec(n); if (!m || typeof HERO_FAC !== 'function') return null; const hf = HERO_FAC(m[2]); if (!hf || hf.hero.spr === m[2]) return null;
+  const base = m[1] + hf.hero.spr + m[3]; return IMG[base] ? tinted(base, IMG[base], hf.hero.tint) : null; }
 function drawSprite(ctx, n, x, y, h, flip, alpha) {
-  const im = IMG[n]; if (!im) return false;
+  const im = spriteImg(n); if (!im) return false;
   const maxH = im.naturalHeight / KPX; if (h > maxH + 0.01) { h = maxH; ART_STATS.clamped++; }
   ART_STATS.draws++;
   const w = h * im.naturalWidth / im.naturalHeight;
@@ -30,7 +42,7 @@ function drawSprite(ctx, n, x, y, h, flip, alpha) {
 }
 // head crop of a sprite for dock portraits (top fraction of the image)
 function drawHead(ctx, n, x, y, s) {
-  const im = IMG[n]; if (!im) return false; const iw = im.naturalWidth, ih = im.naturalHeight;
+  const im = spriteImg(n); if (!im) return false; const iw = im.naturalWidth, ih = im.naturalHeight;
   const cw = Math.min(iw, ih * 0.36), ch = cw; const sx = (iw - cw) / 2;
   ctx.save(); ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, 7); ctx.clip();
   ctx.fillStyle = '#2a1830'; ctx.fillRect(x, y, s, s); ctx.drawImage(im, sx, 0, cw, ch, x, y, s, s); ctx.restore();
@@ -134,7 +146,7 @@ function crate(m, x, y, s) { m.fillStyle = 'rgba(0,0,0,0.35)'; m.fillRect(x - s 
 
 // ---------------- Hero ----------------
 function heroLook(profile) {
-  const fac = profile.faction || 'stone'; const hero = fac === 'forge' ? 'jabari' : 'thandeka';
+  const fac = profile.faction || 'stone'; const hero = FAC(fac).hero.key;
   const st = profile.heroes[hero]; const gear = {};
   ['weapon', 'helm', 'mantle'].forEach(s => { const it = st.equip[s] ? profile.inv.find(i => i.id === st.equip[s]) : null; gear[s] = it ? RARITY[it.rar].vis : -1; });
   return { hero, evo: st.evo, gear };

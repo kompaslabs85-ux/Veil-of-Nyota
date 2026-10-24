@@ -12,6 +12,7 @@ const MAPY = () => HUD_H; // Zara: map butts against the HUD; spare height goes 
 const DOCK_Y = () => MAPY() + MAP_H;
 const OY = () => Math.round((H - 640) / 2);
 const DMG_K = 0.8;
+const STAR3_LEAKS = 2, STAR3_LIVES = 0.85;
 const HERALD_ART = [1, 1, 2, 3]; // Thandi: regalia until 50%, cracked at 50%, plates shed at 25%
 const BOSS_SCALE = 1.6; // Zara: boss reads at a glance
 const SPAWN_DX = 48; // global tower damage scale (tuned by tools/sim.py)
@@ -29,22 +30,23 @@ function telSummary() {
 
 // ---------------- Profile ----------------
 function newHero() { return { lvl: 1, xp: 0, evo: 0, equip: {} }; }
-function freshProfile() { return { v: 3, faction: null, heroes: { thandeka: newHero(), jabari: newHero() }, inv: [], nextId: 1, shards: 0, clears: 0, plays: 0, best: 0, memories: 3, tutDone: false, stars: { glacier: 0, foundry: 0 }, missions: 0 }; }
+function freshProfile() { return { v: 3, faction: null, heroes: Object.fromEntries(FACTIONS.map(f => [f.hero.key, newHero()])), inv: [], nextId: 1, shards: 0, clears: 0, plays: 0, best: 0, memories: 3, tutDone: false, stars: { glacier: 0, foundry: 0 }, missions: 0 }; }
 function loadProfile() {
-  try { const s = localStorage.getItem(PKEY); if (s) { const p = JSON.parse(s); if (p && p.v === 3) { const f = freshProfile(); return Object.assign(f, p, { stars: Object.assign(f.stars, p.stars || {}) }); } } } catch (e) {}
+  try { const s = localStorage.getItem(PKEY); if (s) { const p = JSON.parse(s); if (p && p.v === 3) { const f = freshProfile(); return Object.assign(f, p, { stars: Object.assign(f.stars, p.stars || {}), heroes: Object.assign(f.heroes, p.heroes || {}) }); } } } catch (e) {}
   const p = freshProfile();
   try { const o = JSON.parse(localStorage.getItem('ww_profile_v2') || 'null'); if (o && o.v === 2) { Object.assign(p, { heroes: o.heroes || p.heroes, inv: o.inv || [], nextId: o.nextId || 1, shards: o.shards || 0, clears: o.clears || 0, plays: o.plays || 0, faction: o.faction || null, tutDone: !!o.tutDone, migrated: 'v2' }); } } catch (e) {}
   return p;
 }
 function save() { try { localStorage.setItem(PKEY, JSON.stringify(P)); } catch (e) {} }
-function heroKey(f) { return f === 'forge' ? 'jabari' : 'thandeka'; }
+function heroKey(f) { return FAC(f).hero.key; }
+function FB() { return BASE(P.faction); }
 function genItem(rar, slotKey, fac) {
   const slot = slotKey ? SLOTS.find(s => s.key === slotKey) : pick(SLOTS); fac = fac || (P && P.faction) || 'stone';
   const r = RARITY[rar]; const nAff = [0, 1, 1, 2, 2, 3][rar];
   const it = { id: (P ? P.nextId++ : 0), slot: slot.key, rar, name: `${r.name} ${pick(slot.names)}`, stat: slot.stat, val: Math.round(slot.base * (1 + rar * 0.6)), aff: [] };
   const pool = AFFIXES.slice();
   for (let i = 0; i < nAff; i++) { const a = pool.splice((rnd() * pool.length) | 0, 1)[0]; const v = Math.round(a.v[0] + (a.v[1] - a.v[0]) * (rar / 5));
-    const af = { k: a.key, v }; if (a.key === 'towerBoost') af.t = pick(FACTIONS.find(f => f.key === fac).towers); if (a.key === 'skillBoost') af.t = pick(SKILLS.filter(s => s.f === fac && s.key !== 'pride')).key; it.aff.push(af); }
+    const af = { k: a.key, v }; if (a.key === 'towerBoost') af.t = pick(FACTIONS.find(f => f.key === fac).towers); if (a.key === 'skillBoost') af.t = pick(SKILLS.filter(s => s.f === BASE(fac) && s.key !== 'pride')).key; it.aff.push(af); }
   return it;
 }
 function statTxt(it) { const neg = it.stat === 'cd', pct = /%/.test(STAT_LABEL[it.stat]); return `${STAT_LABEL[it.stat].replace(/ ?-?%$/, '')} ${neg ? '-' : '+'}${it.val}${pct ? '%' : ''}`; }
@@ -113,6 +115,12 @@ cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); Sfx.ensure(); 
 cv.addEventListener('pointermove', (ev) => { if (!ui.pressed) return; const p = toL(ev); if (!inB(ui.pressed, p, 10) || (ui.pressed.hidden && Math.hypot(p.x - ui.start.x, p.y - ui.start.y) > 14)) { ui.rel[ui.pressed.id] = now; ui.pressed = null; } });
 cv.addEventListener('pointerup', (ev) => { pUp(toL(ev)); });
 cv.addEventListener('pointercancel', () => { if (ui.pressed) ui.rel[ui.pressed.id] = now; ui.pressed = null; });
+// Owner test cheat (undocumented): 7 taps on the gold counter within 3s, or type 'nyota' on desktop. Marks the run so it
+// never counts toward telemetry / 3-star metrics; sims never trigger it.
+let cheatTaps = [], cheatKeys = '';
+function cheatTap() { const t = performance.now(); cheatTaps = cheatTaps.filter(x => t - x < 3000); cheatTaps.push(t); if (cheatTaps.length >= 7) { cheatTaps = []; grantCheat(); } }
+function grantCheat() { const A = 10000; if (g && !g.over) { g.gold += A; g.cheated = true; } P.shards = (P.shards || 0) + A; P.memories = (P.memories || 0) + A; P.cheatUsed = (P.cheatUsed || 0) + 1; save(); toast('+10,000', 1.4); }
+window.addEventListener('keydown', (e) => { if (e.key && e.key.length === 1) { cheatKeys = (cheatKeys + e.key.toLowerCase()).slice(-5); if (cheatKeys === 'nyota') { cheatKeys = ''; grantCheat(); } } });
 window.addEventListener('keydown', (e) => { if (scene === 'game' && g) { if (e.key === ' ') cycleSpeed(); if (e.key === 'Escape') { if (g.ring) closeRing(); else pauseGame(); } } });
 document.addEventListener('visibilitychange', () => { if (document.hidden && scene === 'game' && g && !g.over && !g.paused) pauseGame(); });
 function modalSig() { if (scene !== 'game' || !g) return scene; return [scene, g.paused ? 'P' : '', g.resumeT > 0 ? 'R' : '', g.offer ? 'O' : '', g.stakeOffer ? 'S' : '', g.cinema ? 'C' : '', g.over ? 'X' : '', g.ring ? 'r' + (g.ring.spot != null ? g.ring.spot : 't') : '', g.confirmQuit || ''].join('|'); }
@@ -139,7 +147,7 @@ function newMission(mk, resume) {
   const map = MAPS[mk], fac = FACTIONS.find(f => f.key === P.faction), hk = heroKey(P.faction);
   buildRoutes(map); buildMap(map);
   const hm = heroMods(hk); const [hc, hr] = map.hero;
-  g = { mk, map, fac, hk, hm, gold: START_GOLD, lives: START_LIVES + hm.hp + (P.faction === 'stone' ? 5 : 0), maxLives: 0, wi: 0, inWave: false, timer: 0, timerMax: 0,
+  g = { mk, map, fac, hk, hm, gold: START_GOLD, lives: START_LIVES + hm.hp + (FB() === 'stone' ? 5 : 0), maxLives: 0, wi: 0, inWave: false, timer: 0, timerMax: 0,
     spawnQ: [], spawnT: 0, enemies: [], towers: [], fx: [], shots: [], floats: [], pools: [], sk: {}, picks: [], pickQ: 0, offer: null, stakeOffer: null, stake: null, stamp: null, stakeLog: [], hitStop: 0,
     speed: 1, paused: false, resumeT: 0, over: false, t: 0, waveT: 0, leaked: 0, waveLeaks: 0, leakLog: [], kills: 0, earned: 0, spent: 0, rflip: 0, ring: null, dock: [], dockCur: null, used: {}, tipsShown: {},
     ava: map.avalanche ? { state: 'idle', t: 0, used: false } : null, ventT: 0, boss: null, bossT0: 0, bossDur: 0, miniKills: 0, bossKilled: false, shake: 0, cinema: null, bankLog: [], earlyGold: 0, waveStartT: 0, built: 0 };
@@ -164,7 +172,7 @@ function effStats(t) {
   if (g.sk.white) dm += 0.08; if (g.sk.echo && t.key === 'monolith') dm += 0.15; if (g.sk.vein && t.key === 'spire') { dm += 0.2; s.range += 10; }
   if (g.sk.starfire && t.key === 'kiln') dm += 0.3; if (g.sk.chain && s.splash) s.splash = Math.round(s.splash * 1.2); if (m.dmgX) dm += m.dmgX;
   g.towers.forEach(o => { if (o !== t && o.key === 'bell' && o.branch === 'A' && o.lvl >= 4 && dist(o, t) < 90) dm += 0.1; });
-  s.dmg = Math.round(s.dmg * dm * DMG_K * (g.fac.key === "stone" ? STONE_K : 1)); return s;
+  s.dmg = Math.round(s.dmg * dm * DMG_K * (BASE(g.fac.key) === "stone" ? STONE_K : 1)); return s;
 }
 function heroStats() { const h = g.fac.hero, m = g.hm, lv = g.hero.lvl - 1; return { dmg: Math.round(h.dmg * DMG_K * (1 + m.dmg / 100 + lv * 0.08) * (g.sk.crystal ? 1.25 : 1)), rate: h.rate / (1 + m.rate / 100 + lv * 0.03), range: h.range + m.range + lv * 2, dtype: h.dtype, splash: h.splash }; }
 function canBuild(spot) { return !g.towers.some(t => t.spot === spot); }
@@ -180,7 +188,7 @@ function upgrade(t, branch) {
   if ([4, 7, 10].includes(t.lvl)) { fx('burst', t.x, t.y - 24, t.lvl === 10 ? GOLD : '#fff', { n: 14 }); g.shake = Math.max(g.shake, 2); toast(`${towerName(t.key, t.lvl, t.branch)} \u2014 L${t.lvl}${t.lvl === 10 ? ' CROWNED' : ''}`); }
   return true;
 }
-function sell(t) { if (P.faction === 'stone') { toast('Petrified: Rimehold towers cannot be sold'); return; } const v = Math.round(t.spent * 0.6); g.gold += v; g.towers.splice(g.towers.indexOf(t), 1); closeRing(); Sfx.play('ui'); g.floats.push({ s: '+' + v, x: t.x, y: t.y - 20, t: 0, col: GOLD }); }
+function sell(t) { if (FB() === 'stone') { toast('Petrified: ' + g.fac.name + ' towers cannot be sold'); return; } const v = Math.round(t.spent * 0.6); g.gold += v; g.towers.splice(g.towers.indexOf(t), 1); closeRing(); Sfx.play('ui'); g.floats.push({ s: '+' + v, x: t.x, y: t.y - 20, t: 0, col: GOLD }); }
 let opt = Object.assign({ haptics: true, reduced: false, big: false }, (() => { try { return JSON.parse(localStorage.getItem('ww_opt') || '{}'); } catch (e) { return {}; } })());
 try { if (!localStorage.getItem('ww_opt') && matchMedia('(prefers-reduced-motion: reduce)').matches) opt.reduced = true; } catch (e) {}
 window.TXT_K = opt.big ? 1.15 : 1;
@@ -192,13 +200,13 @@ function fx(k, x, y, col, extra) { if (g.fx.length >= FX_CAP) g.fx.shift(); g.fx
 function dust(x, y, n, col) { for (let i = 0; i < n; i++) { const a = rnd() * 6.28, v = 20 + rnd() * 40; fx('p', x, y, col, { vx: Math.cos(a) * v, vy: Math.sin(a) * v - 20, d: 0.5 + rnd() * 0.3 }); } }
 
 // ---------------- Dock: one strip for tips and chat ----------------
-function dockPush(m) { g.dock.push(m); if (g.dock.length > 6) g.dock.splice(0, g.dock.length - 6); }
+function dockPush(m) { if (m && m.txt && g) m.txt = String(m.txt).replace(/\{H\}/g, g.fac.hero.name); g.dock.push(m); if (g.dock.length > 6) g.dock.splice(0, g.dock.length - 6); }
 function dockTip(k) { if (g.tipsShown[k] || P.tipsOff) return; g.tipsShown[k] = 1; dockPush({ kind: 'tip', who: 'Mosa', txt: STR.tips[k], d: 4.5 }); }
 function bark(ev) {
   const pool = STR.barks.concat(STR.barks2).filter(x => x.ev === ev && !g.used[x.id]); if (!pool.length) return false; const b = pool[Math.floor(Math.random() * pool.length)]; g.used[b.id] = 1;
   const spr = ev.startsWith('spawn:') || ev.startsWith('kill:') || ev.startsWith('leak:') ? ENEMIES[ev.split(':')[1]].sprite : ev.startsWith('stake') ? 'e_herald1' : ev === 'mini' ? 'e_shard' : ev === 'lowlives' ? 'e_ling' : ev === 'vent' ? 'e_husk' : ev === 'wavestart' ? 'e_husk' : null; const bs = ev.startsWith('break:') ? ENEMIES[ev.split(':')[1]].sprite : null;
   dockPush({ kind: 'bark', who: b.who, txt: b.txt, spr: bs || spr, d: 3 });
-  if (b.reply && Math.random() < 0.34) dockPush({ kind: 'reply', who: g.fac.hero.name, txt: b.reply[P.faction], spr: `h_${g.hk}${Math.min(3, P.heroes[g.hk].evo + 1)}`, d: 2.6 });
+  if (b.reply && Math.random() < 0.34) dockPush({ kind: 'reply', who: g.fac.hero.name, txt: b.reply[FB()], spr: `h_${g.hk}${Math.min(3, P.heroes[g.hk].evo + 1)}`, d: 2.6 });
   return true;
 }
 function updateDock(dt) { if (!g.dockCur && g.dock.length) g.dockCur = Object.assign({ t: 0 }, g.dock.shift()); if (g.dockCur) { g.dockCur.t += dt; if (g.dockCur.t > g.dockCur.d && (g.dock.length || g.dockCur.t > g.dockCur.d + 4)) g.dockCur = null; } }
@@ -214,7 +222,7 @@ function callWave(early = true) {
 function startWave() {
   const map = g.map, wi = g.wi, w = wi + 1, d = map.waves[wi]; g.inWave = true; g.stakeDone = false; g.timer = 0; g.timerMax = 0; g.spawnT = 0; g.waveT = 0; g.waveLeaks = 0; g.waveStartT = g.t; if (wi === 0) heroLine('deploy'); else if (d.t !== 'boss' && Math.random() < 0.6) bark('wavestart');
   g.bankLog.push(Math.round(g.gold));
-  let budget = waveBudget(map, w); const q = []; const uh = (k) => Math.round(ENEMIES[k].hp * (1 + UNIT_HP_GROWTH * (w - 1)));
+  let budget = waveBudget(map, w); const q = []; const uh = (k) => Math.round(ENEMIES[k].hp * (1 + UNIT_HP_GROWTH * (WEFF(w) - 1)));
   if (d.mini) { const hp = uh(d.mini) * MINI_HP_X; q.push({ k: d.mini, mini: true, hp }); budget -= hp * 0.5; }
   const pre = []; // Kai: sirens paired 1:2 with Vowknights in spikes; 6-ling runner burst in spikes (same budget)
   if (d.t === 'spike' && d.mix.siren) { const ns = Math.max(1, Math.round(budget * d.mix.siren / uh('siren'))); for (let i = 0; i < ns; i++) { pre.push({ k: 'siren', hp: uh('siren'), pk: i }); pre.push({ k: 'shard', hp: uh('shard'), pk: i }, { k: 'shard', hp: uh('shard'), pk: i }); } budget -= ns * (uh('siren') + 2 * uh('shard')); }
@@ -226,17 +234,17 @@ function startWave() {
   runners.forEach((e, i) => { e.at = D + 2 + i * 0.3; q.push(e); });
   g.flyLane = d.flyCut ? (() => { const a = { x: FLY.a.x + (FLY.b.x - FLY.a.x) * d.flyCut, y: FLY.a.y + (FLY.b.y - FLY.a.y) * d.flyCut }; return { a, b: FLY.b, len: dist(a, FLY.b) }; })() : null; // Kai: shortcut lane past the first pad clusters
   if (d.mini) q[0].at = D * 0.6;
-  if (d.boss) q.push({ k: d.boss, boss: true, hp: Math.round(ENEMIES[d.boss].hp * map.M * ((map.bossKFac && map.bossKFac[P.faction]) || map.bossK || 1) * (1 + 0.06 * (map.waves.length - 8))), at: 2 });
+  if (d.boss) q.push({ k: d.boss, boss: true, hp: Math.round(ENEMIES[d.boss].hp * map.M * ((map.bossKFac && map.bossKFac[FB()]) || map.bossK || 1) * (d.bossX || 1)), at: 2 });
   q.sort((a, b) => a.at - b.at); g.spawnQ = q;
   if (g.ava && w % map.avalanche.every === 0 && !g.ava.used) { g.ava.state = 'armed'; g.ava.t = map.avalanche.at; }
-  g.ventT = 0; Sfx.play('wave'); tel('wave_start'); g.banner = { s: `WAVE ${w}${d.t === 'spike' ? ' \u2014 SPIKE' : d.t === 'boss' ? ' \u2014 THE HERALD' : d.t === 'breather' ? ' \u2014 breather' : ''}`, t: 1.6 };
+  g.ventT = 0; Sfx.play('wave'); tel('wave_start'); g.banner = { s: `WAVE ${w}${d.t === 'spike' ? ' \u2014 SPIKE' : d.t === 'boss' ? (d.boss === 'herald' ? ' \u2014 THE HERALD' : ' \u2014 ' + ENEMIES[d.boss].name.toUpperCase()) : d.t === 'breather' ? ' \u2014 breather' : ''}`, t: 1.6 };
 }
 function spawn(s) {
   const d = ENEMIES[s.k]; const r = d.fly ? 0 : (ROUTES.length > 1 ? (g.rflip++ % 2) : 0); const p0 = ROUTES[r].pts[0];
   const e = { k: s.k, d, hp: s.hp, max: s.hp, r, dist: 0, fly: !!d.fly, prog: 0, x: p0.x, y: p0.y, slow: 0, slowT: 0, stun: 0, shred: 0, armDown: 0, grounded: 0, burn: 0, burnT: 0, healT: 2, stage: 0, flip: false, wob: rnd() * 6, hold: 0, wet: 0, hitT: 0, mini: !!s.mini, boss: !!s.boss, spdK: s.spdK || 1, runner: !!s.runner, lane: d.fly && g.flyLane ? g.flyLane : null };
   g.enemies.push(e);
   if (s.mini) { bark('mini'); g.banner = { s: `CHAMPION: ${d.name}`, t: 1.8 }; }
-  else if (s.boss) { g.boss = e; g.bossT0 = g.t; g.cinema = { k: 'herald', t: 0 }; Sfx.play('boss'); g.shake = 6; }
+  else if (s.boss) { g.boss = e; g.bossT0 = g.t; if (s.k === 'herald') g.cinema = { k: 'herald', t: 0 }; else g.banner = { s: `TIER 1 BOSS: ${d.name}`, t: 2.2 }; Sfx.play('boss'); g.shake = 6; }
   else bark('spawn:' + s.k);
   return e;
 }
@@ -258,13 +266,13 @@ function kill(e, src) {
   if (g.floats.length < FLOAT_CAP) g.floats.push({ s: '+' + gold, x: e.x, y: e.y - 20, t: 0, col: GOLD });
   fx('burst', e.x, e.y - 12, e.boss ? GOLD : e.mini ? '#ffd877' : '#ff8aa0', { n: e.boss ? 24 : e.mini ? 14 : 7 }); Sfx.play('die');
   if (e.mini) { g.hitStop = Math.max(g.hitStop, 0.06); g.miniKills++; g.shake = Math.max(g.shake, 4); g.floats.push({ s: '+1 SHARD', x: e.x, y: e.y - 40, t: 0, col: '#8fd8ff' }); }
-  if (e.boss) { g.hitStop = 0.14; g.exitFx = { x: e.x, y: e.y, t0: tReal }; g.bossKilled = true; g.bossDur = g.t - g.bossT0; g.shake = 9; g.floats.push({ s: '+2 SHARDS', x: e.x, y: e.y - 60, t: 0, col: '#8fd8ff' }); dockPush({ kind: 'bark', who: 'Herald of Kasiri', txt: STR.herald.fall, spr: 'e_herald3', d: 3 }); Sfx.play('boom'); }
+  if (e.boss) { g.hitStop = 0.14; g.exitFx = { x: e.x, y: e.y, t0: tReal }; g.bossKills = (g.bossKills || 0) + 1; if (e.k === 'herald') g.bossKilled = true; g.bossDur = g.t - g.bossT0; g.shake = 9; g.floats.push({ s: '+2 SHARDS', x: e.x, y: e.y - 60, t: 0, col: '#8fd8ff' }); dockPush({ kind: 'bark', who: 'Herald of Kasiri', txt: STR.herald.fall, spr: 'e_herald3', d: 3 }); Sfx.play('boom'); }
   if (!e.boss && !e.mini && rnd() < 0.25) bark('kill:' + e.k);
   gainXp(e.boss ? 40 : e.d.lives * 2 + 1);
 }
 function gainXp(n) { const h = g.hero; if (h.lvl >= HERO_LVL_XP.length + 1) return; h.xp += n; const need = HERO_LVL_XP[h.lvl - 1]; if (h.xp >= need) { h.xp -= need; h.lvl++; g.pickQ++; fx('burst', h.x, h.y - 30, GOOD, { n: 10 }); Sfx.play('wave'); } }
 function rollSkills() {
-  const hm = g.hm; const pool = SKILLS.filter(s => (s.f === P.faction || s.f === 'any') && !g.sk[s.key]); const out = [];
+  const hm = g.hm; const pool = SKILLS.filter(s => (s.f === FB() || s.f === 'any') && !g.sk[s.key]); const out = [];
   while (out.length < 3 && pool.length) { let tot = 0; const ws = pool.map(s => { const w = RAR_W[s.w] * (hm.bias && s.w !== 'c' ? 2 : 1); tot += w; return w; }); let r = rnd() * tot, i = 0; for (; i < pool.length - 1; i++) { r -= ws[i]; if (r < 0) break; } out.push(pool.splice(i, 1)[0]); }
   return out;
 }
@@ -274,13 +282,13 @@ function pickSkill(s) {
   if (s.key === 'mend') g.lives = Math.min(g.maxLives, g.lives + Math.round(4 * boost));
   if (s.key === 'avalanche') g.hero.cdMax *= 0.75; toast(s.name + '!');
 }
-function heroLine(kind) { if (!g || g.used['hero:' + kind]) return; g.used['hero:' + kind] = 1; dockPush({ kind: 'reply', who: g.fac.hero.name, txt: STR.hero[kind][P.faction], spr: `h_${g.hk}${Math.min(3, P.heroes[g.hk].evo + 1)}`, d: 2.6 }); }
+function heroLine(kind) { if (!g || g.used['hero:' + kind]) return; g.used['hero:' + kind] = 1; dockPush({ kind: 'reply', who: g.fac.hero.name, txt: STR.hero[kind][FB()], spr: `h_${g.hk}${Math.min(3, P.heroes[g.hk].evo + 1)}`, d: 2.6 }); }
 function useAbility() {
   const h = g.hero; if (h.cd > 0 || !g.inWave) return false; if (g.enemies.some(e => e.d.silence && dist(e, h) < 90)) { toast('Silenced by a Moth Enchantress!'); return false; } heroLine('ability');
   const pw = 1 + g.hm.ability / 100; h.cd = h.cdMax;
-  if (P.faction === 'stone') { const R = 140; g.enemies.forEach(e => { if ((!e.fly || e.grounded) && dist(e, h) < R) { e.stun = Math.max(e.stun, (e.boss ? 1.5 : 4) * pw); fx('shard', e.x, e.y, '#bff3ee'); } }); fx('ring', h.x, h.y, '#bff3ee', { r: R, d: 0.6 }); g.shake = 3; }
+  if (FB() === 'stone') { const R = 140; g.enemies.forEach(e => { if ((!e.fly || e.grounded) && dist(e, h) < R) { e.stun = Math.max(e.stun, (e.boss ? 1.5 : 4) * pw); fx('shard', e.x, e.y, g.fac.key === 'jade' ? '#9ff0bf' : '#bff3ee'); } }); fx('ring', h.x, h.y, g.fac.key === 'jade' ? '#9ff0bf' : '#bff3ee', { r: R, d: 0.6 }); g.shake = 3; }
   else { const lead = g.enemies.filter(e => dist(e, h) < 220).sort((a, b) => remaining(a) - remaining(b))[0] || g.enemies.slice().sort((a, b) => remaining(a) - remaining(b))[0];
-    if (lead) { const dm = 240 * DMG_K * pw * (g.sk.rain ? 1.5 * g.sk.rain : 1); g.enemies.forEach(e => { if (dist(e, lead) < 55) { damage(e, dm, 'fire', null); e.stun = Math.max(e.stun, 1.5); } }); fx('anvil', lead.x, lead.y, '#E8702A'); dust(lead.x, lead.y, 10, '#ffb070'); g.shake = 5; } }
+    if (lead) { const dm = 240 * DMG_K * pw * (g.sk.rain ? 1.5 * g.sk.rain : 1); g.enemies.forEach(e => { if (dist(e, lead) < 55) { damage(e, dm, 'fire', null); e.stun = Math.max(e.stun, 1.5); } }); fx('anvil', lead.x, lead.y, g.fac.accent); dust(lead.x, lead.y, 10, g.fac.key === 'star' ? '#cfe0ff' : g.fac.key === 'sun' ? '#ffe08a' : '#ffb070'); g.shake = 5; } }
   Sfx.play('ability'); return true;
 }
 
@@ -328,7 +336,7 @@ function update(dt) {
   for (const e of g.enemies) {
     if (e.hp <= 0) continue; e.wob += dt; if (e.hitT > 0) e.hitT -= dt; if (e.wet > 0) e.wet -= dt;
     if (e.burnT > 0) { e.burnT -= dt; damage(e, e.burn * dt, 'fire', null, { trueDmg: true, dot: true }); if (e.hp <= 0) continue; }
-    if (e.boss) { const ph = e.hp < e.max * 0.25 ? 3 : e.hp < e.max * 0.5 ? 2 : e.hp < e.max * 0.75 ? 1 : 0;
+    if (e.boss && e.k === 'herald') { const ph = e.hp < e.max * 0.25 ? 3 : e.hp < e.max * 0.5 ? 2 : e.hp < e.max * 0.75 ? 1 : 0;
       if (ph > (e.phase || 0)) { e.phase = ph; if (ph === 2) { e.veil = 3; toast(STR.ui.armourHint, 2.6); } g.hitStop = Math.max(g.hitStop, 0.08); dockPush({ kind: 'bark', who: 'Herald of Kasiri', txt: STR.herald['p' + [75, 50, 25][ph - 1]], spr: 'e_herald' + HERALD_ART[ph], d: 2.8 }); fx('ring', e.x, e.y, '#ff6a8a', { r: 70 }); g.shake = 5; Sfx.play('boss');
         for (let i = 0; i < (ph === 2 ? 4 : 2); i++) { const m = spawn({ k: 'ling', hp: Math.round(ENEMIES.ling.hp * (1 + UNIT_HP_GROWTH * g.wi)) }); m.r = e.r; m.dist = Math.max(0, e.dist - 44 - i * 16); /* Kai: lings spawn behind her */ const p = posAt(ROUTES[m.r], m.dist); m.x = p.x; m.y = p.y; m.veilKid = 1; } }
       if (e.veil > 0) e.veil -= dt; }
@@ -393,14 +401,14 @@ function heroAct(dt) {
   const h = g.hero, s = heroStats(); h.atk -= dt; if (h.swing > 0) h.swing -= dt * 4; if (h.atk > 0) return;
   const tg = targets(h, s.range, 'yes'); if (!tg.length) return; const e = tg[0]; h.atk = s.rate; h.face = e.x < h.x ? -1 : 1; h.swing = 1;
   if (s.splash) g.enemies.forEach(o => { if (dist(o, e) < s.splash) damage(o, s.dmg, s.dtype, null); }); else damage(e, s.dmg, s.dtype, null);
-  g.shots.push({ k: P.faction === 'stone' ? 'crystal' : 'shell', x: h.x, y: h.y - 34, tx: e.x, ty: e.y - 12, t: 0, d: 0.2 });
+  g.shots.push({ k: FB() === 'stone' ? 'crystal' : 'shell', x: h.x, y: h.y - 34, tx: e.x, ty: e.y - 12, t: 0, d: 0.2 });
 }
 
 // ---------------- Mission end + progression ----------------
 let result = null, lvlUps = [];
 function endMission(win) {
   if (g.over) return; if (g.stake) { g.stakeLog.push({ won: false, amt: g.stake.amt, net: -g.stake.amt, w: g.stake.wave + 1 }); g.stake = null; } g.over = true; g.ring = null; clearRun(); const st = P.heroes[g.hk]; const map = g.map;
-  const ratio = g.lives / g.maxLives; const leaksTot = g.leakLog.length; const miniLeak3 = g.leakLog.some(l => l.mini && l.w === 3); const stars = win ? (g.bossKilled && leaksTot <= 1 && ratio >= 0.85 && !miniLeak3 ? 3 : ratio >= 0.4 ? 2 : 1) : 0;
+  const ratio = g.lives / g.maxLives; const leaksTot = g.leakLog.length; const miniLeak3 = g.leakLog.some(l => l.mini && l.w === 3); const stars = win ? (g.bossKilled && (g.bossKills || 0) >= 2 && leaksTot <= STAR3_LEAKS && ratio >= STAR3_LIVES ? 3 : ratio >= 0.4 ? 2 : 1) : 0; // iter3b: 50-wave rule
   const prevStars = P.stars[g.mk] || 0; const starShards = Math.max(0, stars - prevStars); const miniShards = g.miniKills; const bossShards = g.bossKilled ? 2 : 0;
   const shards = starShards + miniShards + bossShards; if (stars > prevStars) P.stars[g.mk] = stars;
   const xp = 20 + g.wi * 12 + (win ? 60 : 0) + g.kills;
@@ -412,14 +420,14 @@ function endMission(win) {
   // reasons
   let reason, starWhy;
   if (win) { reason = g.bossKilled ? `The Herald of Kasiri fell after ${Math.round(g.bossDur)}s. ${map.name} holds.` : `All ${map.waves.length} waves cleared.`;
-    starWhy = `${leaksTot} leak${leaksTot === 1 ? '' : 's'}, ${g.lives}/${g.maxLives} lives. ${stars === 3 ? '3\u2605: boss down, \u22641 leak, 85%+ lives.' : stars === 2 ? (miniLeak3 ? '3\u2605 lost: the wave 3 champion got through.' : '3\u2605 needs the boss killed, \u22641 leak and 85%+ lives.') : '2\u2605 needs 40%+ lives kept.'}`; }
+    starWhy = `${leaksTot} leak${leaksTot === 1 ? '' : 's'}, ${g.lives}/${g.maxLives} lives. ${stars === 3 ? `3\u2605: both bosses down, \u2264${STAR3_LEAKS} leaks, ${Math.round(STAR3_LIVES * 100)}%+ lives.` : stars === 2 ? (miniLeak3 ? '3\u2605 lost: the wave 3 champion got through.' : `3\u2605 needs both bosses killed, \u2264${STAR3_LEAKS} leaks and ${Math.round(STAR3_LIVES * 100)}%+ lives.`) : '2\u2605 needs 40%+ lives kept.'}`; }
   else { const w = g.wi + 1; const lw = g.leakLog.filter(l => l.w === w); const by = {}; lw.forEach(l => by[l.k] = (by[l.k] || 0) + 1);
     const top = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, n]) => `${n} ${ENEMIES[k].name}${n > 1 ? 's' : ''}`).join(' and ');
     reason = g.bossEscaped ? `The Herald of Kasiri reached the shrine after ${Math.round(g.bossDur)}s. Her health bar must hit zero before she walks out.` : `The shrine fell on wave ${w} of ${map.waves.length}${top ? ': ' + top + ' slipped through' : ''}.`;
     const flyers = lw.filter(l => ENEMIES[l.k].fly).length; starWhy = flyers > lw.length / 2 ? 'Most leaks were flyers \u2014 build anti-air (Gale Harpoon / Flak Gargoyle).' : lw.some(l => l.k === 'ling') ? 'Fast Couriers got through \u2014 slow or hold the lane early.' : 'Upgrade earlier and spend the bank before spikes.'; }
-  result = { goldEnd: Math.round(g.gold), win, stars, xp, shards, starShards, miniShards, bossShards, drops, from, to: st.lvl, wave: g.wi, kills: g.kills, lives: g.lives, maxLives: g.maxLives, reason, starWhy, mk: g.mk, bossDur: g.bossDur, story: win ? STR.victory[g.mk] : STR.defeat[P.faction], cp: !win && !!getCp(), stakeLog: g.stakeLog.slice(), cleared: win ? map.waves.length : g.wi, cause: !win ? (g.bossEscaped ? 'boss' : (g.stakeLog.length && !g.stakeLog[g.stakeLog.length - 1].won && g.stakeLog[g.stakeLog.length - 1].w === g.wi + 1 ? 'stake' : 'leak')) : 'win', fac: P.faction, bank: g.gold };
-  result.story = win ? STR.victory[g.mk] + (STR.teaser[g.mk] ? ' ' + STR.teaser[g.mk] : '') : pickDebrief(result.cause, P.faction);
-  tel(win ? 'victory' : 'defeat', { stars, bossDur: g.bossDur });
+  result = { goldEnd: Math.round(g.gold), win, stars, xp, shards, starShards, miniShards, bossShards, drops, from, to: st.lvl, wave: g.wi, kills: g.kills, lives: g.lives, maxLives: g.maxLives, reason, starWhy, mk: g.mk, bossDur: g.bossDur, story: win ? STR.victory[g.mk] : STR.defeat[FB()], cp: !win && !!getCp(), stakeLog: g.stakeLog.slice(), cleared: win ? map.waves.length : g.wi, cause: !win ? (g.bossEscaped ? 'boss' : (g.stakeLog.length && !g.stakeLog[g.stakeLog.length - 1].won && g.stakeLog[g.stakeLog.length - 1].w === g.wi + 1 ? 'stake' : 'leak')) : 'win', fac: P.faction, bank: g.gold };
+  result.story = (win ? STR.victory[g.mk] + (STR.teaser[g.mk] ? ' ' + STR.teaser[g.mk] : '') : pickDebrief(result.cause, FB())).replace(/\{H\}/g, g.fac.hero.name);
+  if (g.cheated) tel('cheat_run', { win, stars }); else tel(win ? 'victory' : 'defeat', { stars, bossDur: g.bossDur });
   save(); Sfx.play(win ? 'win' : 'lose'); g.endT = 0.8;
 }
 function pickDebrief(cause, fac) { const L = [...new Set((STR.debrief[cause + ':' + fac] || []).concat(STR.debrief[cause] || []))]; if (!L.length) return STR.defeat[fac];
@@ -456,7 +464,7 @@ function drawEnemy(e) {
   const bob = e.fly ? Math.sin(e.wob * 4) * 3 - 14 : Math.abs(Math.sin(e.wob * 7)) * -2;
   if (e.boss) { const gl = ctx.createRadialGradient(e.x, e.y + 6, 4, e.x, e.y + 6, h * 0.42); const pk = opt.reduced ? 0.55 : 0.5 + 0.12 * Math.sin(tReal * 4); gl.addColorStop(0, `rgba(255,40,60,${pk})`); gl.addColorStop(1, 'rgba(255,40,60,0)'); ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(e.x, e.y + 6, h * 0.42, h * 0.15, 0, 0, 7); ctx.fill(); } // Zara: red ground glow
   ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + 6, h * 0.22, h * 0.07, 0, 0, 7); ctx.fill();
-  const spr = e.boss ? 'e_herald' + HERALD_ART[e.phase || 0] : e.d.sprite;
+  const spr = e.k === 'herald' ? 'e_herald' + HERALD_ART[e.phase || 0] : e.d.sprite;
   ctx.save(); if (e.hitT > 0) ctx.filter = 'brightness(2.2)'; else if (e.stun > 0 || e.hold > 0) ctx.filter = 'saturate(0.3) brightness(1.2)'; else if (e.wet > 0) ctx.filter = 'hue-rotate(160deg) saturate(0.7)';
   if (e.veil > 0) ctx.globalAlpha = 0.55;
   drawSprite(ctx, spr, e.x, e.y + 8 + bob, h, e.flip); ctx.restore();
@@ -534,13 +542,13 @@ function drawRing() {
   if (!t) { const keys = g.fac.towers; const opts = keys.map(k => ({ id: 'b_' + k, icon: towerSprite({ key: k, lvl: 1 }), style: R.sel === k ? 'gold' : 'plum', selected: R.sel === k, cost: buildCost(k), fn: () => { R.sel = k; } }));
     const { cx, cy } = ringButtons(opts);
     if (R.sel) { const k = R.sel, d = TOWERS[k]; B('bOk', cx - 18, cy - 18, 36, 36, { style: g.gold >= buildCost(k) ? 'green' : 'plum', label: '\u2713', sz: 18, r: 18, disabled: g.gold < buildCost(k) }, () => build(k, R.spot));
-      infoLine(`${TOWER_NAMES[k]} \u2014 ${buildCost(k)}g`, `${d.desc} ${P.faction === 'stone' ? 'Can\u2019t be sold.' : ''}`); }
+      infoLine(`${tName(k)} \u2014 ${buildCost(k)}g`, `${d.desc} ${FB() === 'stone' ? 'Can\u2019t be sold.' : ''}`); }
     else { B('rClose', cx - 18, cy - 18, 36, 36, { style: 'plum', label: '\u2715', sz: 14, r: 18 }, () => { g.ring = null; }); infoLine('Choose a tower', 'Tap an icon, then \u2713 to build'); }
     return; }
   const opts = []; const s = effStats(t);
   if (t.lvl < MAX_LVL) { if (t.lvl + 1 === BRANCH_LVL) TOWERS[t.key].branches.forEach(b => opts.push({ id: 'br' + b.key, style: R.sel === b.key ? 'gold' : 'plum', selected: R.sel === b.key, label: b.key, sz: 16, cost: upCost(t.key, t.lvl), fn: () => { R.sel = b.key; } }));
     else opts.push({ id: 'up', style: g.gold >= upCost(t.key, t.lvl) ? 'green' : 'plum', label: '\u25B2', sz: 16, cost: upCost(t.key, t.lvl), fn: () => upgrade(t) }); }
-  if (P.faction === 'forge') opts.push({ id: 'sell', style: R.sel === 'sell' ? 'red' : 'plum', selected: R.sel === 'sell', label: '$', sz: 16, fn: () => { R.sel = 'sell'; } });
+  if (FB() === 'forge') opts.push({ id: 'sell', style: R.sel === 'sell' ? 'red' : 'plum', selected: R.sel === 'sell', label: '$', sz: 16, fn: () => { R.sel = 'sell'; } });
   opts.push({ id: 'tgt', style: 'ice', label: TGT_LBL[t.tgt || 'first'], sz: 12, fam: 'Nunito', fn: () => { R.sel = null; cycleTgt(t); } });
   opts.push({ id: 'rClose', style: 'plum', label: '\u2715', sz: 14, fn: () => { g.ring = null; } });
   const { cx, cy } = ringButtons(opts);
@@ -553,7 +561,7 @@ function drawRing() {
 function pill(x, y, w, h, label, col = INK) { ctx.fillStyle = 'rgba(16,8,22,0.82)'; rr(ctx, x, y, w, h, h / 2); ctx.fill(); ctx.strokeStyle = 'rgba(242,193,78,0.35)'; ctx.lineWidth = 1; ctx.stroke(); txt(ctx, label, x + w / 2, y + h / 2 + 1, 13, col, 'center', 'Nunito', 900, w - 8); }
 function drawHUD(MY) {
   const y0 = MY - HUD_H; ctx.fillStyle = '#140a1a'; ctx.fillRect(0, 0, W, MY);
-  pill(4, y0 + 8, 78, 28, `\u2665 ${g.lives}/${g.maxLives}`, g.lives <= 6 ? BAD : '#ffb3c0'); pill(85, y0 + 8, 62, 28, `\u25C9 ${Math.floor(g.gold)}`, GOLD);
+  pill(4, y0 + 8, 78, 28, `\u2665 ${g.lives}/${g.maxLives}`, g.lives <= 6 ? BAD : '#ffb3c0'); pill(85, y0 + 8, 62, 28, `\u25C9 ${Math.floor(g.gold)}`, GOLD); B('goldPill', 85, y0 + 8, 62, 28, { hidden: true, silent: true }, cheatTap);
   pill(150, y0 + 8, 92, 28, `Wave ${Math.min(g.wi + (g.inWave ? 1 : 0), g.map.waves.length) || 0}/${g.map.waves.length}`, INK);
   B('speed', 246, y0, 50, 44, { style: g.speed > 1 ? 'gold' : 'plum', label: g.speed + 'x', sz: 13 }, cycleSpeed);
   B('pause', 302, y0, 52, 44, { style: 'plum', label: '\u275A\u275A', sz: 13 }, pauseGame);
@@ -563,14 +571,14 @@ function drawDock() {
   ctx.strokeStyle = 'rgba(242,193,78,0.75)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, y + 1); ctx.lineTo(W, y + 1); ctx.stroke(); ctx.strokeStyle = 'rgba(242,193,78,0.25)'; ctx.lineWidth = 1; rr(ctx, 3, y + 5, W - 6, h - 8, 10); ctx.stroke();
   const tall = h >= 150; const bh = Math.min(64, h - 12), by = tall ? H - bh - 12 : y + (h - bh) / 2; const hh = g.hero;
   // ability (left)
-  const ready = hh.cd <= 0 && g.inWave; B('ability', 6, by, 64, bh, { style: ready ? (P.faction === 'stone' ? 'ice' : 'red') : 'plum', label: P.faction === 'stone' ? 'OATH' : 'ANVIL', sub: hh.cd > 0 ? Math.ceil(hh.cd) + 's' : ready ? 'ready' : 'in wave', sz: 13, disabled: !ready }, useAbility);
+  const ready = hh.cd <= 0 && g.inWave; B('ability', 6, by, 64, bh, { style: ready ? (FB() === 'stone' ? 'ice' : 'red') : 'plum', label: g.fac.ab, sub: hh.cd > 0 ? Math.ceil(hh.cd) + 's' : ready ? 'ready' : 'in wave', sz: 13, disabled: !ready }, useAbility);
   // wave / call-early (right)
   const wv = g.map.waves.length; let lab, sub, st = 'red', dis = false;
   if (g.inWave) { lab = 'WAVE'; sub = `${g.wi + 1}/${wv}`; st = 'plum'; dis = true; }
   else if (g.wi >= wv) { lab = '\u2014'; dis = true; }
   else { const isBoss = g.map.waves[g.wi].t === 'boss'; const bon = g.timerMax ? earlyBonus(g.map, g.wi, g.timer, g.timerMax) : 0; lab = g.timerMax ? 'CALL' : 'START'; sub = g.timerMax ? (isBoss ? `${Math.ceil(g.timer)}s \u00b7 no bonus` : `${Math.ceil(g.timer)}s \u00b7 +${bon}g`) : `wave ${g.wi + 1}`; }
   B('wave', W - 90, by, 84, bh, { style: st, label: lab, sub, sz: 15, disabled: dis }, () => callWave(true));
-  if (!g.inWave && g.wi < wv && !g.offer && !g.stakeOffer) { const keys = Object.keys(TOWERS).filter(k => TOWERS[k].faction === P.faction);
+  if (!g.inWave && g.wi < wv && !g.offer && !g.stakeOffer) { const keys = Object.keys(TOWERS).filter(k => TOWERS[k].faction === FB());
     const minB = Math.min(...keys.map(buildCost)); const upg = g.towers.filter(t => t.lvl < MAX_LVL && t.lvl + 1 !== BRANCH_LVL).map(t => upCost(t.key, t.lvl)); const minC = Math.min(minB, ...upg);
     if (isFinite(minC) && g.gold >= minC) { const a = 0.75 + 0.25 * Math.sin(tReal * 5); ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(16,8,22,0.9)'; const ny = tall ? by - 32 : y - 30; rr(ctx, 80, ny, W - 160, 24, 12); ctx.fill(); ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore();
       txt(ctx, STR.ui.unspent.replace('{g}', Math.floor(g.gold)), W / 2, ny + 12, 12, GOLD, 'center', 'Nunito', 900, W - 170); } }
@@ -610,7 +618,7 @@ function drawCinema() {
   const k = Math.min(1, c.t * 1.6); ctx.save(); ctx.globalAlpha = k; drawSprite(ctx, 'e_herald1', W / 2, y0 + 290, 280 * (0.9 + 0.1 * k)); ctx.restore();
   txt(ctx, 'THE HERALD OF KASIRI', W / 2, y0 + 20, 20, '#ff6a8a', 'center', 'Cinzel Decorative', 900, W - 20);
   panel(ctx, 16, y0 + 300, W - 32, 128); txt(ctx, 'Herald of Kasiri', 30, y0 + 318, 12, '#ff8aa0', 'left', 'Nunito', 900); wrap(ctx, STR.herald.intro, 30, y0 + 338, W - 64, 15, 13, INK, 'left', 'Nunito', 700, 2);
-  if (c.t > 0.8) { txt(ctx, g.fac.hero.name, 30, y0 + 378, 12, g.fac.accent, 'left', 'Nunito', 900); wrap(ctx, STR.herald.reply[P.faction], 30, y0 + 398, W - 64, 15, 13, INK, 'left', 'Nunito', 700, 2); }
+  if (c.t > 0.8) { txt(ctx, g.fac.hero.name, 30, y0 + 378, 12, g.fac.accent, 'left', 'Nunito', 900); wrap(ctx, STR.herald.reply[FB()], 30, y0 + 398, W - 64, 15, 13, INK, 'left', 'Nunito', 700, 2); }
   if (c.t > 1.2) B('fight', 60, y0 + 444, W - 120, 52, { style: 'red', label: 'FIGHT', sz: 18 }, () => { g.cinema = null; g.bossT0 = g.t; });
 }
 function drawPause() {
@@ -674,15 +682,17 @@ function drawTitle() {
     B('mute', W - 64, 10, 54, 36, { style: 'plum', label: Sfx.muted ? '\u266A off' : '\u266A on', sz: 12 }, () => Sfx.toggle());
     txt(ctx, `Clears ${P.clears} \u00b7 Shards ${P.shards} \u00b7 \u2605 ${(P.stars.glacier || 0) + (P.stars.foundry || 0)}/6`, W / 2, 620, 12, '#b9a8c4', 'center', 'Nunito', 700); });
 }
-function drawFaction() {
-  bgArt(0.75); scr(() => { txt(ctx, 'Choose your Wardens', W / 2, 34, 20, GOLD, 'center', 'Cinzel Decorative', 900);
-    FACTIONS.forEach((f, i) => { const y = 60 + i * 284, on = ui.facSel === f.key, S = STR.factions[f.key];
-      B('f_' + f.key, 14, y, W - 28, 230, { style: on ? 'gold' : 'plum', selected: on, r: 18 }, () => { ui.facSel = f.key; });
-      ctx.save(); rr(ctx, 16, y + 2, W - 32, 226, 16); ctx.clip(); drawSprite(ctx, `hs_${f.hero.key}0`, 76, y + 236, 230); ctx.restore();
-      const dc = on ? '#2a1606' : INK; txt(ctx, S.name, 146, y + 26, 16, on ? '#2a1606' : f.accent, 'left', 'Cinzel', 900, 196); txt(ctx, `${f.hero.name}, ${f.hero.title}`, 146, y + 48, 12, on ? '#2a1606' : GOLD, 'left', 'Nunito', 800, 196);
-      wrap(ctx, S.blurb, 146, y + 72, 192, 15, 12, dc, 'left', 'Nunito', 700, 4); wrap(ctx, S.tradeoff, 146, y + 140, 192, 15, 12, on ? '#7a0010' : BAD, 'left', 'Nunito', 800, 3);
-      f.towers.forEach((k, j) => drawSprite(ctx, `t_${k}_1`, 158 + j * 38, y + 222, 44)); });
-    const s = ui.facSel; B('facOk', 40, 580, W - 80, 50, { style: s ? 'red' : 'plum', label: s ? `JOIN ${STR.factions[s].name.toUpperCase()}` : 'SELECT A FACTION', sz: 13, disabled: !s }, () => { P.faction = s; save(); clearRun(); scene = 'maps'; }); });
+function drawFaction() { // iter3b: five compact faction cards (fits 360x640)
+  bgArt(0.75); scr(() => { txt(ctx, 'Choose your Wardens', W / 2, 26, 18, GOLD, 'center', 'Cinzel Decorative', 900);
+    FACTIONS.forEach((f, i) => { const y = 42 + i * 104, on = ui.facSel === f.key, S = STR.factions[f.key], dc = on ? '#2a1606' : INK;
+      B('f_' + f.key, 10, y, W - 20, 98, { style: on ? 'gold' : 'plum', selected: on, r: 14 }, () => { ui.facSel = f.key; });
+      ctx.fillStyle = f.accent; ctx.fillRect(12, y + 8, 4, 82);
+      drawHead(ctx, `h_${f.hero.key}1`, 22, y + 10, 56); TINT_FAC = f.key; drawSprite(ctx, `t_${f.towers[0]}_1`, 50, y + 96, 30); TINT_FAC = null;
+      txt(ctx, S.name, 86, y + 17, 14, on ? '#2a1606' : f.accent, 'left', 'Cinzel', 900, 180); txt(ctx, f.era, W - 18, y + 17, 9, on ? '#2a1606' : '#cdb8d6', 'right', 'Nunito', 800, 90);
+      txt(ctx, `${f.hero.name} \u00b7 ${f.hero.ability}`, 86, y + 34, 11, on ? '#2a1606' : GOLD, 'left', 'Nunito', 800, W - 104);
+      wrap(ctx, f.lore, 86, y + 50, W - 104, 13, 10.5, dc, 'left', 'Nunito', 700, 2);
+      txt(ctx, S.tradeoff, 86, y + 86, 10.5, on ? '#7a0010' : BAD, 'left', 'Nunito', 800, W - 104); });
+    const s = ui.facSel; B('facOk', 40, 566, W - 80, 48, { style: s ? 'red' : 'plum', label: s ? `JOIN ${STR.factions[s].name.toUpperCase()}` : 'SELECT A FACTION', sz: 13, disabled: !s }, () => { P.faction = s; save(); clearRun(); scene = 'maps'; }); });
 }
 let mapSel = 'glacier';
 function drawMaps() {
@@ -699,7 +709,7 @@ function drawBrief() {
   scr(() => { txt(ctx, m.name, W / 2, 40, 20, GOLD, 'center', 'Cinzel Decorative', 900);
     panel(ctx, 14, 66, W - 28, 120); ctx.fillStyle = '#2EC4B6'; ctx.beginPath(); ctx.arc(54, 106, 28, 0, 7); ctx.fill(); txt(ctx, 'M', 54, 107, 24, '#062a26', 'center', 'Cinzel', 900);
     txt(ctx, 'Elder Mosa', 96, 86, 13, GOLD, 'left', 'Cinzel', 900); wrap(ctx, b.mosa, 96, 108, W - 124, 15, 12, INK, 'left', 'Nunito', 700, 5);
-    panel(ctx, 14, 196, W - 28, 100); drawHead(ctx, `h_${f.hero.key}${Math.min(3, P.heroes[f.hero.key].evo + 1)}`, 26, 214, 56); txt(ctx, f.hero.name, 96, 216, 13, f.accent, 'left', 'Cinzel', 900); wrap(ctx, b[P.faction], 96, 238, W - 124, 15, 12, INK, 'left', 'Nunito', 700, 3);
+    panel(ctx, 14, 196, W - 28, 100); drawHead(ctx, `h_${f.hero.key}${Math.min(3, P.heroes[f.hero.key].evo + 1)}`, 26, 214, 56); txt(ctx, f.hero.name, 96, 216, 13, f.accent, 'left', 'Cinzel', 900); wrap(ctx, b[FB()], 96, 238, W - 124, 15, 12, INK, 'left', 'Nunito', 700, 3);
     wrap(ctx, m.howto, W / 2, 330, W - 44, 17, 13, '#cdb8d6', 'center', 'Nunito', 700, 6);
     B('go', 50, 470, W - 100, 58, { style: 'red', label: 'DEFEND THE VEIL', sz: 17 }, () => { clearRun(); newMission(mapSel); }); B('back', 50, 540, W - 100, 44, { style: 'plum', label: 'BACK', sz: 13 }, () => { scene = 'maps'; }); });
 }

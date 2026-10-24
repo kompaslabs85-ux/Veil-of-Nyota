@@ -3,12 +3,16 @@
 const STR = {
   title: 'WARDEN WARS', subtitle: 'Veil of Nyota',
   factions: {
-    stone: { name: 'Rimehold Wardens', blurb: 'Frost-granite wardens of the high passes. Pierce armour, hold the line.', tradeoff: 'Petrified: towers can never be sold.' },
-    forge: { name: 'Ashgate Covenant', blurb: 'Furnace-priests of Ashgate. Molten splash and raw burst.', tradeoff: 'Heat: sustained fire overheats a tower for 4s.' },
+    sun: { name: 'Sunveil', blurb: 'Solar priests of the pyramid city. Molten splash and raw burst.', tradeoff: 'Sun-fever: towers overheat.' },
+    jade: { name: 'Jade Court', blurb: 'Scholars of silk and lantern-ink. Bind the lane, hold the line. Shrine +5 lives.', tradeoff: 'Written edict: towers can never be sold.' },
+    stone: { name: 'Frostmark', blurb: 'Runesmiths and shieldwalls of the fjords. Pierce armour, hold the line. Shrine +5 lives.', tradeoff: 'Rune-bound: towers can never be sold.' },
+    forge: { name: 'Foundry Row', blurb: 'Steam, brass and clockwork. Splash shells and raw burst.', tradeoff: 'Pressure: towers overheat.' },
+    star: { name: 'Starfall Ascendancy', blurb: 'Hard-light engines from orbit. Precise beams and flak.', tradeoff: 'Thermal limit: towers overheat.' },
   },
+
   brief: {
-    glacier: { mosa: 'Rimehold\u2019s pass is groaning under new snow. Something is walking down it. Something that giggles.', stone: 'Then we hold the pass. Stone first.', forge: 'Snow and Hollow. I brought the furnace; they brought the cold.' },
-    foundry: { mosa: 'Ashgate\u2019s streets split at the foundry. They\u2019ll come down both, and meet at the crossing.', stone: 'Two streets, one wall. I\u2019ll be the wall.', forge: 'My streets. Mind the vents \u2014 they bite both ways.' },
+    glacier: { mosa: 'Frostmark\u2019s pass is groaning under new snow. Something is walking down it. Something that giggles.', stone: 'Then we hold the pass. Stone first.', forge: 'Snow and Hollow. I brought the furnace; they brought the cold.' },
+    foundry: { mosa: 'Foundry Row\u2019s streets split at the foundry. They\u2019ll come down both, and meet at the crossing.', stone: 'Two streets, one wall. I\u2019ll be the wall.', forge: 'My streets. Mind the vents \u2014 they bite both ways.' },
   },
   tips: {
     start: 'Tap a stone pad to open the build ring.',
@@ -36,20 +40,20 @@ const STR = {
     { id: 'sw1', ev: 'stakewon', who: 'Herald of Kasiri', txt: 'Fine, you win this round. Don\u2019t let it go to your head.', reply: { stone: 'Too late.', forge: 'Already has.' } },
     { id: 'sl1', ev: 'stakelost', who: 'Herald of Kasiri', txt: 'Pay up, darling. I accept gold and humiliation.', reply: { stone: 'Take the gold. Keep the rest.', forge: 'Put it on my tab.' } },
     { id: 'av1', ev: 'avalanche', who: 'Mosa', txt: 'The cornice is cracking \u2014 clear the pads!', reply: { stone: 'Let it fall. On them.', forge: 'Snow. Wonderful.' } },
-    { id: 'vn1', ev: 'vent', who: 'Shard Maiden Corra', txt: 'Ugh, steam! My hair!', reply: { stone: 'Keep walking.', forge: 'Ashgate says hello.' } },
+    { id: 'vn1', ev: 'vent', who: 'Shard Maiden Corra', txt: 'Ugh, steam! My hair!', reply: { stone: 'Keep walking.', forge: 'Foundry Row says hello.' } },
   ],
   herald: {
     intro: 'Kneel, or don\u2019t. I find both charming.',
-    reply: { stone: 'Rimehold doesn\u2019t kneel, Herald.', forge: 'Ashgate doesn\u2019t kneel. It forges.' },
+    reply: { stone: 'The north doesn\u2019t kneel, Herald.', forge: 'We don\u2019t kneel. We forge.' },
     p75: 'A scratch on the regalia? Phase two, darling. Do keep up.',
     p50: 'You\u2019ve cracked me. How intimate. Mind, I\u2019m a touch more\u2026 approachable now. Don\u2019t let it go to your head.',
     p25: 'Fine. The ceremonial plates were for guests. This is what I wear to work.',
     fall: 'Remember me\u2026 you won\u2019t be able to help it.',
   },
-  victory: { glacier: 'The pass is quiet. Those maidens wore clan bangles. Ours. Find out whose.', foundry: 'The foundry fires burn on. Whatever the Herald wanted in Ashgate, it didn\u2019t get it. Yet.' },
+  victory: { glacier: 'The pass is quiet. Those maidens wore clan bangles. Ours. Find out whose.', foundry: 'The foundry fires burn on. Whatever the Herald wanted in Foundry Row, it didn\u2019t get it. Yet.' },
   defeat: {
-    stone: 'The shrine cracks. Thandeka drags herself up from the snow: \u201cNot today. Again.\u201d',
-    forge: 'The forge-light gutters. Jabari wipes ash from his jaw: \u201cRekindle it. We go again.\u201d',
+    stone: 'The shrine cracks. {H} rises from the snow: \u201cNot today. Again.\u201d',
+    forge: 'The forge-light gutters. {H} wipes the ash away: \u201cRekindle it. We go again.\u201d',
   },
 
   // Costume-break and wave-start pools: one random unused line per event; hero replies ~1 in 3 (game.js bark()).
@@ -67,7 +71,7 @@ const STR = {
     { id: 'ws4', ev: 'wavestart', who: 'Harpy-Queen Zeyna', txt: 'Chins up, darlings. The view from up here is delicious.', reply: { stone: 'Hooks are ready.', forge: 'Flak\u2019s ready too.' } },
   ],
   hero: {
-    deploy: { stone: 'Here I stand. Here I stay. It\u2019s sort of my thing.', forge: 'Zuri\u2019s open for business. Today\u2019s special: pain.' },
+    deploy: { stone: 'Here I stand. Here I stay. It\u2019s sort of my thing.', forge: 'The workshop\u2019s open for business. Today\u2019s special: pain.' },
     ability: { stone: 'No further. That\u2019s not a threat. It\u2019s geography.', forge: 'Heads up, ladies!' },
     low: { stone: 'Cracks show character\u2026 and they\u2019re showing a lot.', forge: 'Running a bit warm here. Even for me.' },
   },
@@ -79,17 +83,17 @@ const STR = {
   ],
   // Defeat debriefs keyed by cause (stake | leak | boss) and faction; game.js pickDebrief() merges cause:faction + cause pools.
   debrief: {
-    'stake:stone': ['You bet the shrine on a no-leak wave? Darling, I\u2019d have taken that bet too. \u2014 Herald', 'The pass broke. I didn\u2019t. Again. \u2014 Thandeka'],
-    'stake:forge': ['You bet the shrine on a no-leak wave? Darling, I\u2019d have taken that bet too. \u2014 Herald', 'Fire\u2019s out. Matches are not. Eish, again. \u2014 Jabari'],
-    'leak:stone': ['Your shrine\u2019s got more holes than your plan, sweetheart. Again? \u2014 Vex', 'The pass broke. I didn\u2019t. Again. \u2014 Thandeka', 'Stone holds where you put it. Put more of it on the lane. \u2014 Thandeka'],
-    'leak:forge': ['Your shrine\u2019s got more holes than your plan, sweetheart. Again? \u2014 Vex', 'Fire\u2019s out. Matches are not. Eish, again. \u2014 Jabari', 'Both streets, boss. They took the one we didn\u2019t watch. \u2014 Jabari'],
-    'boss:stone': ['I walked right past you. Next time, at least look at me. \u2014 Herald', 'She walked through like she owned the pass. She doesn\u2019t. Yet. \u2014 Thandeka'],
-    'boss:forge': ['I walked right past you. Next time, at least look at me. \u2014 Herald', 'Gorgeous, terrifying, and gone. Next time she stays for the slag. \u2014 Jabari'],
-    stake: ['You staked it all on a no-leak wave. Bold. Wrong, but bold. \u2014 Herald', 'Bet smaller, boet. The shrine isn\u2019t a casino. \u2014 Jabari', 'Gold on the table and Hollow in the shrine. Bet smaller, Warden. \u2014 Mosa'],
-    leak: ['One slipped through, then all of them did. Eish. \u2014 Thandeka', 'They didn\u2019t break the wall. They walked around it. \u2014 Mosa', 'Count what slipped through. That is your next tower. \u2014 Mosa'],
-    boss: ['She curtsied at the shrine. Curtsied. \u2014 Thandeka', 'Her health bar must reach zero before she reaches the shrine. Save damage for her. \u2014 Mosa'],
+    'stake:stone': ['You bet the shrine on a no-leak wave? Darling, I\u2019d have taken that bet too. \u2014 Herald', 'The pass broke. I didn\u2019t. Again. \u2014 {H}'],
+    'stake:forge': ['You bet the shrine on a no-leak wave? Darling, I\u2019d have taken that bet too. \u2014 Herald', 'Fire\u2019s out. Matches are not. Eish, again. \u2014 {H}'],
+    'leak:stone': ['Your shrine\u2019s got more holes than your plan, sweetheart. Again? \u2014 Vex', 'The pass broke. I didn\u2019t. Again. \u2014 {H}', 'Stone holds where you put it. Put more of it on the lane. \u2014 {H}'],
+    'leak:forge': ['Your shrine\u2019s got more holes than your plan, sweetheart. Again? \u2014 Vex', 'Fire\u2019s out. Matches are not. Eish, again. \u2014 {H}', 'Both streets, boss. They took the one we didn\u2019t watch. \u2014 {H}'],
+    'boss:stone': ['I walked right past you. Next time, at least look at me. \u2014 Herald', 'She walked through like she owned the pass. She doesn\u2019t. Yet. \u2014 {H}'],
+    'boss:forge': ['I walked right past you. Next time, at least look at me. \u2014 Herald', 'Gorgeous, terrifying, and gone. Next time she stays for the slag. \u2014 {H}'],
+    stake: ['You staked it all on a no-leak wave. Bold. Wrong, but bold. \u2014 Herald', 'Bet smaller, boet. The shrine isn\u2019t a casino. \u2014 {H}', 'Gold on the table and Hollow in the shrine. Bet smaller, Warden. \u2014 Mosa'],
+    leak: ['One slipped through, then all of them did. Eish. \u2014 {H}', 'They didn\u2019t break the wall. They walked around it. \u2014 Mosa', 'Count what slipped through. That is your next tower. \u2014 Mosa'],
+    boss: ['She curtsied at the shrine. Curtsied. \u2014 {H}', 'Her health bar must reach zero before she reaches the shrine. Save damage for her. \u2014 Mosa'],
   },
-  teaser: { glacier: 'Those bangles came from Ashgate\u2019s foundry. Jabari, your streets are next. \u2014 Mosa', foundry: 'The Herald fled north with a name she stole. The Veil is thinner than we thought. \u2014 Mosa' },
+  teaser: { glacier: 'Those bangles came from Foundry Row. Their streets are next. \u2014 Mosa', foundry: 'The Herald fled north with a name she stole. The Veil is thinner than we thought. \u2014 Mosa' },
   explain: { shards: 'Crystallised Ember. Spend them to evolve your hero.', remembrance: 'Clear with an ally to earn it. The star counts who stood with you.' },
   ui: {
     unspent: '\u25C9 {g}g unspent: build or upgrade',
@@ -100,7 +104,7 @@ const STR = {
   },
   stakeLines: ['A little flutter? Cute.', 'Double? Oh, now you\u2019re interesting.', 'Everything, darling? Bold. Reckless. Very nearly attractive.'],
 };
-// Display names for towers (Rimehold / Ashgate) — base, L4 A, L4 B.
+// Display names for towers (Frostmark / Foundry Row) — base, L4 A, L4 B.
 const TOWER_NAMES = {
   monolith: 'Rune Menhir', drum: 'Avalanche Horn', spire: 'Icefang Spire', bastion: 'Shieldwall', skyhook: 'Gale Harpoon',
   cannon: 'Mortar Chapel', slag: 'Brimstone Sprayer', lance: 'Galvanic Lance', bell: 'Cathedral Bell', kiln: 'Flak Gargoyle',

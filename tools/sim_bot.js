@@ -2,7 +2,7 @@
 window.runSim = function (fac, mk, seed, opts) {
   opts = opts || {}; WW.setSeed(seed); WW.start(fac, mk); const g0 = () => WW.g; const out = { fac, mk, seed, waves: [], bossDur: null, win: false, stars: 0, bankPre: [], bankPeak: 0, early: 0, earlyN: 0, calls: 0, choices: 0, stakes: [], profile: opts.profile || 'full' };
   const thin = opts.profile === 'thin'; let clean = 0, done = 0;
-  const F = { stone: ['monolith', 'spire', 'skyhook', 'drum', 'bastion'], forge: ['cannon', 'kiln', 'lance', 'slag', 'bell'] }[fac];
+  const F = { stone: ['monolith', 'spire', 'skyhook', 'drum', 'bastion'], forge: ['cannon', 'kiln', 'lance', 'slag', 'bell'] }[BASE(fac)];
   // pad order: by number of route points within range
   const map = WW.MAPS[mk]; const C = (c) => c * 40 + 20;
   const pts = []; (map.routes||[]).forEach(rt => { for (let i = 1; i < rt.length; i++) { const a = rt[i - 1], b = rt[i]; for (let k = 0; k <= 10; k++) pts.push({ x: C(a[0] + (b[0] - a[0]) * k / 10), y: C(a[1] + (b[1] - a[1]) * k / 10) }); } });
