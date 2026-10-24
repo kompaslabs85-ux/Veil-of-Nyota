@@ -151,8 +151,8 @@ function newMission(mk, resume) {
     spawnQ: [], spawnT: 0, enemies: [], towers: [], fx: [], shots: [], floats: [], pools: [], sk: {}, picks: [], pickQ: 0, offer: null, stakeOffer: null, stake: null, stamp: null, stakeLog: [], hitStop: 0,
     speed: 1, paused: false, resumeT: 0, over: false, t: 0, waveT: 0, leaked: 0, waveLeaks: 0, leakLog: [], kills: 0, earned: 0, spent: 0, rflip: 0, ring: null, dock: [], dockCur: null, used: {}, tipsShown: {},
     ava: map.avalanche ? { state: 'idle', t: 0, used: false } : null, ventT: 0, boss: null, bossT0: 0, bossDur: 0, miniKills: 0, bossKilled: false, shake: 0, cinema: null, bankLog: [], earlyGold: 0, waveStartT: 0, built: 0 };
-  g.maxLives = g.lives;
-  g.hero = { x: C(hc), y: C(hr) + MAPY() * 0, atk: 0, cd: 0, cdMax: fac.hero.cd * (1 - hm.cd / 100), lvl: 1, xp: 0, face: 1, swing: 0, tgt: 'first' };
+  g.maxLives = g.lives; COST_FAC = fac.key;
+  g.hero = { x: C(hc), y: C(hr) + MAPY() * 0, atk: 0, cd: 0, cdMax: fac.hero.cd * (1 - hm.cd / 100) * (fac.key === 'star' ? 1.6 : 1), lvl: 1, xp: 0, face: 1, swing: 0, tgt: 'first' };
   if (resume) { Object.assign(g, { gold: resume.gold, lives: resume.lives, maxLives: resume.maxLives, wi: resume.wi, sk: resume.sk || {}, picks: resume.picks || [], used: resume.used || {}, earned: resume.earned || 0, kills: resume.kills || 0, leaked: resume.leaked || 0, leakLog: resume.leakLog || [], miniKills: resume.miniKills || 0 });
     g.hero.lvl = resume.hlvl || 1; g.hero.tgt = resume.htgt || 'first'; g.hero.xp = resume.hxp || 0; if (g.sk.avalanche) g.hero.cdMax *= 0.75;
     resume.towers.forEach(t => g.towers.push(Object.assign(mkTower(t.key, t.spot, t.lvl, t.branch, t.spent), { tgt: t.tgt || 'first' }))); if (g.ava && resume.avaUsed) g.ava.used = true; }
@@ -172,7 +172,7 @@ function effStats(t) {
   if (g.sk.white) dm += 0.08; if (g.sk.echo && t.key === 'monolith') dm += 0.15; if (g.sk.vein && t.key === 'spire') { dm += 0.2; s.range += 10; }
   if (g.sk.starfire && t.key === 'kiln') dm += 0.3; if (g.sk.chain && s.splash) s.splash = Math.round(s.splash * 1.2); if (m.dmgX) dm += m.dmgX;
   g.towers.forEach(o => { if (o !== t && o.key === 'bell' && o.branch === 'A' && o.lvl >= 4 && dist(o, t) < 90) dm += 0.1; });
-  s.dmg = Math.round(s.dmg * dm * DMG_K * (BASE(g.fac.key) === "stone" ? STONE_K : 1)); return s;
+  s.dmg = Math.round(s.dmg * dm * DMG_K * (BASE(g.fac.key) === "stone" ? STONE_K : 1) * (g.fac.key === "stone" ? 1.2 : 1)); return s;
 }
 function heroStats() { const h = g.fac.hero, m = g.hm, lv = g.hero.lvl - 1; return { dmg: Math.round(h.dmg * DMG_K * (1 + m.dmg / 100 + lv * 0.08) * (g.sk.crystal ? 1.25 : 1)), rate: h.rate / (1 + m.rate / 100 + lv * 0.03), range: h.range + m.range + lv * 2, dtype: h.dtype, splash: h.splash }; }
 function canBuild(spot) { return !g.towers.some(t => t.spot === spot); }
@@ -188,7 +188,7 @@ function upgrade(t, branch) {
   if ([4, 7, 10].includes(t.lvl)) { fx('burst', t.x, t.y - 24, t.lvl === 10 ? GOLD : '#fff', { n: 14 }); g.shake = Math.max(g.shake, 2); toast(`${towerName(t.key, t.lvl, t.branch)} \u2014 L${t.lvl}${t.lvl === 10 ? ' CROWNED' : ''}`); }
   return true;
 }
-function sell(t) { if (FB() === 'stone') { toast('Petrified: ' + g.fac.name + ' towers cannot be sold'); return; } const v = Math.round(t.spent * 0.6); g.gold += v; g.towers.splice(g.towers.indexOf(t), 1); closeRing(); Sfx.play('ui'); g.floats.push({ s: '+' + v, x: t.x, y: t.y - 20, t: 0, col: GOLD }); }
+function sell(t) { if (g.fac.key === 'jade') { toast('Written edict: ' + g.fac.name + ' towers cannot be sold'); return; } const v = Math.round(t.spent * 0.6); g.gold += v; g.towers.splice(g.towers.indexOf(t), 1); closeRing(); Sfx.play('ui'); g.floats.push({ s: '+' + v, x: t.x, y: t.y - 20, t: 0, col: GOLD }); }
 let opt = Object.assign({ haptics: true, reduced: false, big: false }, (() => { try { return JSON.parse(localStorage.getItem('ww_opt') || '{}'); } catch (e) { return {}; } })());
 try { if (!localStorage.getItem('ww_opt') && matchMedia('(prefers-reduced-motion: reduce)').matches) opt.reduced = true; } catch (e) {}
 window.TXT_K = opt.big ? 1.15 : 1;
@@ -237,7 +237,7 @@ function startWave() {
   if (d.boss) q.push({ k: d.boss, boss: true, hp: Math.round(ENEMIES[d.boss].hp * map.M * ((map.bossKFac && map.bossKFac[FB()]) || map.bossK || 1) * (d.bossX || 1)), at: 2 });
   q.sort((a, b) => a.at - b.at); g.spawnQ = q;
   if (g.ava && w % map.avalanche.every === 0 && !g.ava.used) { g.ava.state = 'armed'; g.ava.t = map.avalanche.at; }
-  g.ventT = 0; Sfx.play('wave'); tel('wave_start'); g.banner = { s: `WAVE ${w}${d.t === 'spike' ? ' \u2014 SPIKE' : d.t === 'boss' ? (d.boss === 'herald' ? ' \u2014 THE HERALD' : ' \u2014 ' + ENEMIES[d.boss].name.toUpperCase()) : d.t === 'breather' ? ' \u2014 breather' : ''}`, t: 1.6 };
+  g.ventT = 0; Sfx.play('wave'); tel('wave_start'); g.banner = { s: `WAVE ${w}${d.t === 'spike' ? ' \u2014 SPIKE' : d.t === 'boss' ? (d.boss === 'herald' ? ' \u2014 HERALD OF KASIRI' : ' \u2014 ' + ENEMIES[d.boss].name.toUpperCase()) : d.t === 'breather' ? ' \u2014 breather' : ''}`, t: 1.6 };
 }
 function spawn(s) {
   const d = ENEMIES[s.k]; const r = d.fly ? 0 : (ROUTES.length > 1 ? (g.rflip++ % 2) : 0); const p0 = ROUTES[r].pts[0];
@@ -266,7 +266,7 @@ function kill(e, src) {
   if (g.floats.length < FLOAT_CAP) g.floats.push({ s: '+' + gold, x: e.x, y: e.y - 20, t: 0, col: GOLD });
   fx('burst', e.x, e.y - 12, e.boss ? GOLD : e.mini ? '#ffd877' : '#ff8aa0', { n: e.boss ? 24 : e.mini ? 14 : 7 }); Sfx.play('die');
   if (e.mini) { g.hitStop = Math.max(g.hitStop, 0.06); g.miniKills++; g.shake = Math.max(g.shake, 4); g.floats.push({ s: '+1 SHARD', x: e.x, y: e.y - 40, t: 0, col: '#8fd8ff' }); }
-  if (e.boss) { g.hitStop = 0.14; g.exitFx = { x: e.x, y: e.y, t0: tReal }; g.bossKills = (g.bossKills || 0) + 1; if (e.k === 'herald') g.bossKilled = true; g.bossDur = g.t - g.bossT0; g.shake = 9; g.floats.push({ s: '+2 SHARDS', x: e.x, y: e.y - 60, t: 0, col: '#8fd8ff' }); dockPush({ kind: 'bark', who: 'Herald of Kasiri', txt: STR.herald.fall, spr: 'e_herald3', d: 3 }); Sfx.play('boom'); }
+  if (e.boss) { g.hitStop = 0.14; g.exitFx = { x: e.x, y: e.y, t0: tReal }; g.bossKills = (g.bossKills || 0) + 1; if (e.k === 'herald') g.bossKilled = true; g.bossDur = g.t - g.bossT0; g.shake = 9; g.floats.push({ s: '+2 SHARDS', x: e.x, y: e.y - 60, t: 0, col: '#8fd8ff' }); if (e.k === 'herald') dockPush({ kind: 'bark', who: 'Herald of Kasiri', txt: STR.herald.fall, spr: 'e_herald3', d: 3 }); Sfx.play('boom'); }
   if (!e.boss && !e.mini && rnd() < 0.25) bark('kill:' + e.k);
   gainXp(e.boss ? 40 : e.d.lives * 2 + 1);
 }
@@ -284,8 +284,8 @@ function pickSkill(s) {
 }
 function heroLine(kind) { if (!g || g.used['hero:' + kind]) return; g.used['hero:' + kind] = 1; dockPush({ kind: 'reply', who: g.fac.hero.name, txt: STR.hero[kind][FB()], spr: `h_${g.hk}${Math.min(3, P.heroes[g.hk].evo + 1)}`, d: 2.6 }); }
 function useAbility() {
-  const h = g.hero; if (h.cd > 0 || !g.inWave) return false; if (g.enemies.some(e => e.d.silence && dist(e, h) < 90)) { toast('Silenced by a Moth Enchantress!'); return false; } heroLine('ability');
-  const pw = 1 + g.hm.ability / 100; h.cd = h.cdMax;
+  const h = g.hero; if (h.cd > 0 || !g.inWave) return false; if (g.enemies.some(e => e.d.silence && dist(e, h) < 90)) { toast('Silenced by a Moth Enchantress!'); return false; } if (g.fac.key === 'forge') { if (g.gold < 40) { toast('Pressure: Steam Hammer needs 40 gold'); return false; } g.gold -= 40; } heroLine('ability');
+  const pw = (1 + g.hm.ability / 100) * (g.fac.key === 'star' ? 1.35 : 1); h.cd = h.cdMax;
   if (FB() === 'stone') { const R = 140; g.enemies.forEach(e => { if ((!e.fly || e.grounded) && dist(e, h) < R) { e.stun = Math.max(e.stun, (e.boss ? 1.5 : 4) * pw); fx('shard', e.x, e.y, g.fac.key === 'jade' ? '#9ff0bf' : '#bff3ee'); } }); fx('ring', h.x, h.y, g.fac.key === 'jade' ? '#9ff0bf' : '#bff3ee', { r: R, d: 0.6 }); g.shake = 3; }
   else { const lead = g.enemies.filter(e => dist(e, h) < 220).sort((a, b) => remaining(a) - remaining(b))[0] || g.enemies.slice().sort((a, b) => remaining(a) - remaining(b))[0];
     if (lead) { const dm = 240 * DMG_K * pw * (g.sk.rain ? 1.5 * g.sk.rain : 1); g.enemies.forEach(e => { if (dist(e, lead) < 55) { damage(e, dm, 'fire', null); e.stun = Math.max(e.stun, 1.5); } }); fx('anvil', lead.x, lead.y, g.fac.accent); dust(lead.x, lead.y, 10, g.fac.key === 'star' ? '#cfe0ff' : g.fac.key === 'sun' ? '#ffe08a' : '#ffb070'); g.shake = 5; } }
@@ -384,7 +384,7 @@ function fireTower(t, dt) {
   const tg = targets(t, s.range, air); if (!tg.length) return; const e = tg[0];
   t.cd = s.rate; t.ang = Math.atan2(e.y - t.y, e.x - t.x); t.recoil = 1;
   const airMul = (x) => (x.fly && !(x.grounded > 0) && d.air === 'half' && !m.airFull) ? 0.5 : 1;
-  if (d.heat) { t.heat += d.heat * (g.sk.mastery ? 0.75 : 1) * (t.nearVent ? 1 - g.map.vent.heatCut : 1); if (t.heat >= 100) { t.heat = 0; t.hot = g.sk.quench ? 2 : 4; fx('ring', t.x, t.y - 20, '#ff6a2a', { r: 20 }); Sfx.play('heat'); } }
+  if (d.heat && g.fac.key === 'sun') { t.heat += d.heat * (g.sk.mastery ? 0.75 : 1) * (t.nearVent ? 1 - g.map.vent.heatCut : 1); if (t.heat >= 100) { t.heat = 0; t.hot = g.sk.quench ? 2 : 4; fx('ring', t.x, t.y - 20, '#ff6a2a', { r: 20 }); Sfx.play('heat'); } }
   Sfx.play('shoot');
   switch (d.kind) {
     case 'bolt': { const n = 1 + (m.extra || 0); tg.slice(0, n).forEach(x => { damage(x, s.dmg * airMul(x), d.dtype, t); if (m.stun) x.stun = Math.max(x.stun, m.stun * 0.5); if (s.ground && x.fly) x.grounded = s.ground * (g.sk.chains ? 1.5 : 1); g.shots.push({ k: t.key === 'skyhook' ? 'chain' : t.key === 'spire' ? 'crystal' : 'bolt', x: t.x, y: t.y - 30, tx: x.x, ty: x.y - 12, t: 0, d: 0.18 }); fx('hit', x.x, x.y - 12, '#bff3ee', { d: 0.18 }); }); break; }
@@ -467,7 +467,8 @@ function drawEnemy(e) {
   const spr = e.k === 'herald' ? 'e_herald' + HERALD_ART[e.phase || 0] : e.d.sprite;
   ctx.save(); if (e.hitT > 0) ctx.filter = 'brightness(2.2)'; else if (e.stun > 0 || e.hold > 0) ctx.filter = 'saturate(0.3) brightness(1.2)'; else if (e.wet > 0) ctx.filter = 'hue-rotate(160deg) saturate(0.7)';
   if (e.veil > 0) ctx.globalAlpha = 0.55;
-  drawSprite(ctx, spr, e.x, e.y + 8 + bob, h, e.flip); ctx.restore();
+  if (e.vr == null) e.vr = e.boss ? 0 : Math.floor(Math.random() * 5); const bw = E_BUILD[e.vr], bt = E_TALL[e.vr]; if (bw !== 1 || bt !== 1) { ctx.translate(e.x, e.y); ctx.scale(bw, bt); ctx.translate(-e.x, -e.y); }
+  drawSprite(ctx, e.vr ? spr + '~' + e.vr : spr, e.x, e.y + 8 + bob, h, e.flip); ctx.restore();
   if (e.mini) { ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + 6, h * 0.28, h * 0.09, 0, 0, 7); ctx.stroke(); }
   if (!e.boss) { const w = e.mini ? 34 : 22, y = e.y + 8 + bob - h - 5; ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(e.x - w / 2, y, w, 4); ctx.fillStyle = e.mini ? GOLD : GOOD; ctx.fillRect(e.x - w / 2, y, w * Math.max(0, e.hp / e.max), 4); }
 }
@@ -498,7 +499,7 @@ function drawWorld(MY) {
   g.pools.forEach(p => { ctx.fillStyle = `rgba(232,112,42,${0.25 * Math.min(1, p.t)})`; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r, p.r * 0.5, 0, 0, 7); ctx.fill(); });
   // depth-sorted entities
   const ents = [...g.towers.map(t => ({ y: t.y, f: () => drawTower(t) })), ...g.enemies.map(e => ({ y: e.y + (e.fly ? 30 : 0), f: () => drawEnemy(e) })), { y: g.hero.y, f: () => { const h = g.hero; ctx.save(); ctx.translate(h.x, h.y + 10); ctx.scale(h.face, 1); ctx.rotate(h.swing * 0.06); ctx.save(); ctx.scale(h.face, 1); ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 5, 0, 0, 7); ctx.fill(); ctx.restore();
-      const hh = HERO_H * SIZE.tower * 0.82, ev = P.heroes[g.hk].evo; if (!drawSprite(ctx, `hs_${g.hk}${ev >= 2 ? 3 : 0}`, 0, 0, hh)) drawHero(ctx, heroLook(P), 0, 0, HERO_H, now / 1000); ctx.restore(); } }];
+      const hh = HERO_H * SIZE.tower * 0.82, ev = P.heroes[g.hk].evo; if (false) { const s = hh * 0.62; ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(0, 0, s * 0.5, s * 0.14, 0, 0, 7); ctx.fill(); ctx.fillStyle = g.fac.accent; ctx.fillRect(-2, -s * 0.55, 4, s * 0.55); ctx.beginPath(); ctx.arc(0, -s * 0.55 - s / 2, s / 2 + 3, 0, 7); ctx.fill(); drawPortrait(ctx, g.hk, -s / 2, -s * 1.05, s); } else if (!drawSprite(ctx, `hs_${g.hk}${ev >= 2 ? 3 : 0}`, 0, 0, hh)) drawHero(ctx, heroLook(P), 0, 0, HERO_H, now / 1000); ctx.restore(); } }];
   ents.sort((a, b) => a.y - b.y).forEach(o => o.f());
   g.shots.forEach(s => { const k = s.t / s.d; ctx.strokeStyle = s.k === 'beam' ? '#9fe8ff' : s.k === 'chain' ? '#d9e7ef' : s.k === 'crystal' ? '#bff3ee' : s.k === 'shell' ? '#ffb070' : '#fff3c0'; ctx.lineWidth = s.k === 'beam' ? 4 * (1 - k) + 1 : 2.5;
     if (s.k === 'shell') { const x = s.x + (s.tx - s.x) * k, y = s.y + (s.ty - s.y) * k - Math.sin(k * Math.PI) * 30; ctx.fillStyle = '#ffb070'; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); }
@@ -512,7 +513,7 @@ function drawWorld(MY) {
     else { ctx.fillStyle = f.col; ctx.fillRect(f.x - 2, f.y - 2, 4, 4); }
     ctx.restore(); });
   g.floats.forEach(f => { ctx.save(); ctx.globalAlpha = 1 - f.t / 0.9; outlined(ctx, f.s, f.x, f.y - f.t * 26, f.s.length > 8 ? 14 : 17, f.col); ctx.restore(); });
-  if (g.boss && g.boss.hp > 0) { const b = g.boss; ctx.fillStyle = 'rgba(16,8,22,0.85)'; rr(ctx, 30, 6, W - 60, 22, 11); ctx.fill(); ctx.fillStyle = RED; rr(ctx, 34, 10, (W - 68) * b.hp / b.max, 14, 7); ctx.fill(); txt(ctx, `Herald of Kasiri${b.veil > 0 ? ' \u2014 VEILED' : ''}`, W / 2, 17, 12, '#fff', 'center', 'Nunito', 900); }
+  if (g.boss && g.boss.hp > 0) { const b = g.boss; ctx.fillStyle = 'rgba(16,8,22,0.85)'; rr(ctx, 30, 6, W - 60, 22, 11); ctx.fill(); ctx.fillStyle = RED; rr(ctx, 34, 10, (W - 68) * b.hp / b.max, 14, 7); ctx.fill(); txt(ctx, `${b.d.name}${b.veil > 0 ? ' \u2014 VEILED' : ''}`, W / 2, 17, 12, '#fff', 'center', 'Nunito', 900); }
   if (g.ring) drawRing();
   ctx.restore(); ui.oy = 0;
 }
@@ -542,13 +543,13 @@ function drawRing() {
   if (!t) { const keys = g.fac.towers; const opts = keys.map(k => ({ id: 'b_' + k, icon: towerSprite({ key: k, lvl: 1 }), style: R.sel === k ? 'gold' : 'plum', selected: R.sel === k, cost: buildCost(k), fn: () => { R.sel = k; } }));
     const { cx, cy } = ringButtons(opts);
     if (R.sel) { const k = R.sel, d = TOWERS[k]; B('bOk', cx - 18, cy - 18, 36, 36, { style: g.gold >= buildCost(k) ? 'green' : 'plum', label: '\u2713', sz: 18, r: 18, disabled: g.gold < buildCost(k) }, () => build(k, R.spot));
-      infoLine(`${tName(k)} \u2014 ${buildCost(k)}g`, `${d.desc} ${FB() === 'stone' ? 'Can\u2019t be sold.' : ''}`); }
+      infoLine(`${tName(k)} \u2014 ${buildCost(k)}g`, `${d.desc} ${g.fac.key === 'jade' ? 'Can\u2019t be sold.' : ''}`); }
     else { B('rClose', cx - 18, cy - 18, 36, 36, { style: 'plum', label: '\u2715', sz: 14, r: 18 }, () => { g.ring = null; }); infoLine('Choose a tower', 'Tap an icon, then \u2713 to build'); }
     return; }
   const opts = []; const s = effStats(t);
   if (t.lvl < MAX_LVL) { if (t.lvl + 1 === BRANCH_LVL) TOWERS[t.key].branches.forEach(b => opts.push({ id: 'br' + b.key, style: R.sel === b.key ? 'gold' : 'plum', selected: R.sel === b.key, label: b.key, sz: 16, cost: upCost(t.key, t.lvl), fn: () => { R.sel = b.key; } }));
     else opts.push({ id: 'up', style: g.gold >= upCost(t.key, t.lvl) ? 'green' : 'plum', label: '\u25B2', sz: 16, cost: upCost(t.key, t.lvl), fn: () => upgrade(t) }); }
-  if (FB() === 'forge') opts.push({ id: 'sell', style: R.sel === 'sell' ? 'red' : 'plum', selected: R.sel === 'sell', label: '$', sz: 16, fn: () => { R.sel = 'sell'; } });
+  if (g.fac.key !== 'jade') opts.push({ id: 'sell', style: R.sel === 'sell' ? 'red' : 'plum', selected: R.sel === 'sell', label: '$', sz: 16, fn: () => { R.sel = 'sell'; } });
   opts.push({ id: 'tgt', style: 'ice', label: TGT_LBL[t.tgt || 'first'], sz: 12, fam: 'Nunito', fn: () => { R.sel = null; cycleTgt(t); } });
   opts.push({ id: 'rClose', style: 'plum', label: '\u2715', sz: 14, fn: () => { g.ring = null; } });
   const { cx, cy } = ringButtons(opts);
@@ -664,21 +665,21 @@ function drawGame() {
 }
 
 // ---------------- Scenes ----------------
-function bgArt(dim = 0.55, splash) { const gr = ctx.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2a1636'); gr.addColorStop(1, '#0c0610'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-  if (splash) { ctx.save(); ctx.globalAlpha = 1 - dim * 0.6; drawSprite(ctx, splash, W / 2, H - 40, 300); ctx.restore(); }
+function bgArt(dim = 0.55, splash, sx) { const gr = ctx.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2a1636'); gr.addColorStop(1, '#0c0610'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  if (splash) { ctx.save(); ctx.globalAlpha = 1 - dim * 0.6; drawSprite(ctx, splash, sx || W / 2, H - 40, 300); ctx.restore(); }
   const v = ctx.createLinearGradient(0, 0, 0, H); v.addColorStop(0, `rgba(12,6,16,${dim * 0.5})`); v.addColorStop(1, `rgba(12,6,16,${Math.min(1, dim + 0.2)})`); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H); }
 function logo(y) { txt(ctx, 'WARDEN', W / 2, y + 26, 40, GOLD, 'center', 'Cinzel Decorative', 900); txt(ctx, 'WARS', W / 2, y + 70, 40, '#ff6a8a', 'center', 'Cinzel Decorative', 900); return y + 100; }
 function scr(fn) { ctx.save(); ctx.translate(0, OY()); ui.oy = OY(); fn(); ctx.restore(); ui.oy = 0; }
 const curHero = () => P.faction ? `hs_${heroKey(P.faction)}${P.heroes[heroKey(P.faction)].evo >= 2 ? 3 : 0}` : 'hs_thandeka0';
 function drawTitle() {
-  bgArt(0.4, curHero()); const run = P.faction ? getRun() : null;
+  bgArt(0.4, curHero(), W * 0.74); const BX = 16, BW = Math.round(W * 0.52); const run = P.faction ? getRun() : null;
   scr(() => { const ly = logo(50); txt(ctx, STR.subtitle, W / 2, ly + 6, 14, INK, 'center', 'Cinzel', 700);
     if (P.migrated) txt(ctx, 'Your earlier save was carried over', W / 2, ly + 28, 12, GOOD, 'center');
     let y = 330;
-    if (run) { B('resume', 50, y, W - 100, 56, { style: 'green', label: 'RESUME', sub: `${MAPS[run.mk].name} \u00b7 wave ${run.wi + 1}/${MAPS[run.mk].waves.length}`, sz: 18 }, () => newMission(run.mk, run)); y += 64; }
-    B('play', 50, y, W - 100, 56, { style: 'red', label: P.faction ? 'PLAY' : 'BEGIN', sz: 18 }, () => { scene = P.faction ? 'maps' : 'faction'; }); y += 66;
-    if (P.faction) { const hw = (W - 110) / 2; B('hero', 50, y, hw, 46, { style: 'gold', label: 'HERO', sz: 14 }, () => { scene = 'levelup'; }); B('arm', 60 + hw, y, hw, 46, { style: 'gold', label: 'ARMOURY', sz: 14 }, () => { scene = 'armoury'; });
-      y += 54; B('fac', 50, y, W - 100, 44, { style: 'plum', label: 'Change faction', sz: 13 }, () => { scene = 'faction'; }); y += 50; }
+    if (run) { B('resume', BX, y, BW, 56, { style: 'green', label: 'RESUME', sub: `${MAPS[run.mk].name} \u00b7 wave ${run.wi + 1}/${MAPS[run.mk].waves.length}`, sz: 18 }, () => newMission(run.mk, run)); y += 64; }
+    B('play', BX, y, BW, 56, { style: 'red', label: P.faction ? 'PLAY' : 'BEGIN', sz: 18 }, () => { scene = P.faction ? 'maps' : 'faction'; }); y += 66;
+    if (P.faction) { const hw = (BW - 8) / 2; B('hero', BX, y, hw, 46, { style: 'gold', label: 'HERO', sz: 14 }, () => { scene = 'levelup'; }); B('arm', BX + 8 + hw, y, hw, 46, { style: 'gold', label: 'ARMOURY', sz: 14 }, () => { scene = 'armoury'; });
+      y += 54; B('fac', BX, y, BW, 44, { style: 'plum', label: 'Change faction', sz: 13 }, () => { scene = 'faction'; }); y += 50; }
     B('mute', W - 64, 10, 54, 36, { style: 'plum', label: Sfx.muted ? '\u266A off' : '\u266A on', sz: 12 }, () => Sfx.toggle());
     txt(ctx, `Clears ${P.clears} \u00b7 Shards ${P.shards} \u00b7 \u2605 ${(P.stars.glacier || 0) + (P.stars.foundry || 0)}/6`, W / 2, 620, 12, '#b9a8c4', 'center', 'Nunito', 700); });
 }
@@ -687,7 +688,7 @@ function drawFaction() { // iter3b: five compact faction cards (fits 360x640)
     FACTIONS.forEach((f, i) => { const y = 42 + i * 104, on = ui.facSel === f.key, S = STR.factions[f.key], dc = on ? '#2a1606' : INK;
       B('f_' + f.key, 10, y, W - 20, 98, { style: on ? 'gold' : 'plum', selected: on, r: 14 }, () => { ui.facSel = f.key; });
       ctx.fillStyle = f.accent; ctx.fillRect(12, y + 8, 4, 82);
-      drawHead(ctx, `h_${f.hero.key}1`, 22, y + 10, 56); TINT_FAC = f.key; drawSprite(ctx, `t_${f.towers[0]}_1`, 50, y + 96, 30); TINT_FAC = null;
+      drawHead(ctx, `h_${f.hero.key}1`, 22, y + 8, 58); drawEmblem(ctx, f.key, 51, y + 82, 10);
       txt(ctx, S.name, 86, y + 17, 14, on ? '#2a1606' : f.accent, 'left', 'Cinzel', 900, 180); txt(ctx, f.era, W - 18, y + 17, 9, on ? '#2a1606' : '#cdb8d6', 'right', 'Nunito', 800, 90);
       txt(ctx, `${f.hero.name} \u00b7 ${f.hero.ability}`, 86, y + 34, 11, on ? '#2a1606' : GOLD, 'left', 'Nunito', 800, W - 104);
       wrap(ctx, f.lore, 86, y + 50, W - 104, 13, 10.5, dc, 'left', 'Nunito', 700, 2);

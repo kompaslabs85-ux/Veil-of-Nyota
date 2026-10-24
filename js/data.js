@@ -20,13 +20,13 @@ const FACTIONS = [
   { key:'sun', base:'forge', name:'Sunveil', full:'Sunveil Dominion', accent:'#F2B134', playable:true, era:'Kush · Iron Age',
     tint:'sepia(0.35) saturate(1.5) hue-rotate(-12deg) brightness(1.08)', ab:'SUN',
     lore:'Pyramid priests bank Veil-light in gold. Every blessing burns hotter than it should.',
-    hero:{ key:'amanirenas', spr:'thandeka', tint:'sepia(0.25) saturate(1.3) hue-rotate(-10deg)', name:'Amanikhatashan', title:'Candace of the Sun Gate', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Noon Judgement',
+    hero:{ key:'amanirenas', spr:'amanirenas', name:'Amanikhatashan', title:'Candace of the Sun Gate', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Noon Judgement',
       abilityDesc:'A sun-lance strikes the lead Hollow: big damage and stun.', cd:25 },
     towers:['cannon','slag','lance','bell','kiln'] },
   { key:'jade', base:'stone', name:'Jade Court', full:'Jade Court', accent:'#4FC28A', playable:true, era:'Imperial E. Asia',
     tint:'hue-rotate(95deg) saturate(1.15)', ab:'INK',
     lore:'Scholars write Veil-light in silk and lantern-ink. What is written stays written.',
-    hero:{ key:'meilin', spr:'thandeka', tint:'hue-rotate(110deg) saturate(0.9)', name:'Lady Meilin', title:'Grand Scholar of the Jade Court', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:'Edict of Stillness',
+    hero:{ key:'meilin', spr:'meilin', name:'Lady Meilin', title:'Grand Scholar of the Jade Court', dmg:22, rate:1.0, range:115, dtype:'pierce', ability:'Edict of Stillness',
       abilityDesc:'An ink edict binds every ground Hollow near the hero for 4s.', cd:30 },
     towers:['monolith','bastion','drum','spire','skyhook'] },
   { key:'stone', base:'stone', name:'Frostmark', full:'Frostmark Holds', accent:'#2EC4B6', playable:true, era:'Norse fjords',
@@ -43,8 +43,8 @@ const FACTIONS = [
     towers:['cannon','slag','lance','bell','kiln'] },
   { key:'star', base:'forge', name:'Starfall Ascendancy', full:'Starfall Ascendancy', accent:'#9FB8FF', playable:true, era:'Far future',
     tint:'hue-rotate(200deg) saturate(1.2) brightness(1.1)', ab:'LANCE',
-    lore:'An orbital order forges Veil-light into hard light. Precise, brilliant, and it overheats.',
-    hero:{ key:'vael', spr:'jabari', tint:'hue-rotate(200deg) saturate(0.8) brightness(1.1)', name:'Vael Orin', title:'Lightwright of the Ascendancy', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Orbital Lance',
+    lore:'An orbital order forges Veil-light into hard light. Precise, brilliant, and slow to recharge.',
+    hero:{ key:'vael', spr:'vael', name:'Vael Orin', title:'Lightwright of the Ascendancy', dmg:22, rate:1.2, range:110, splash:30, dtype:'fire', ability:'Orbital Lance',
       abilityDesc:'A light-lance from orbit hits the lead Hollow: big damage and stun.', cd:25 },
     towers:['cannon','slag','lance','bell','kiln'] },
 ];
@@ -121,7 +121,8 @@ function towerStats(key, lvl, branch) {
     if (m.splash) s.splash = Math.max(s.splash, m.splash + (lvl - 4) * 2); }
   return s;
 }
-function buildCost(key) { return TOWERS[key].tiers[0].cost; }
+let COST_FAC = null; // set by game.js to the active faction key
+function buildCost(key) { const c = TOWERS[key].tiers[0].cost; return COST_FAC === 'stone' ? Math.round(c * 1.1) : c; } // Frostmark rune-bound: +10% build cost
 function upCost(key, lvl) { // cost to go lvl -> lvl+1
   const t = TOWERS[key].tiers; if (lvl >= MAX_LVL) return 0;
   if (lvl === 1 || lvl === 2) return Math.round(t[1].cost * 0.55);

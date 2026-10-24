@@ -24,7 +24,12 @@ function tinted(n, im, f) { if (!f) return im; const k = n + '|' + f; if (TINTED
   try { const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d');
     if (!('filter' in x)) return (TINTED[k] = im); x.filter = f; x.drawImage(im, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height; return (TINTED[k] = c); } catch (e) { return (TINTED[k] = im); } }
 const SPRITE_VARIANTS = { e_vg_glacier: ['e_herald2', 'hue-rotate(170deg) saturate(1.2) brightness(1.05)'], e_vg_foundry: ['e_herald2', 'sepia(0.7) hue-rotate(-15deg) saturate(1.7)'] };
+// iter3b.1: enemy look variants (skin tone / build) and painted hero portraits (p_<heroKey>.webp, bust in a round frame)
+const E_VAR = ['', 'brightness(0.48) sepia(0.45) saturate(1.25) contrast(1.1)', 'brightness(1.32) saturate(0.55) contrast(0.92)', 'sepia(0.85) brightness(0.82) saturate(1.7)', 'brightness(0.62) hue-rotate(-22deg) saturate(1.7) contrast(1.1)'];
+const E_BUILD = [1, 1.32, 0.76, 1.16, 0.88]; const E_TALL = [1, 0.92, 1.12, 1.04, 0.96];
+const PORT = {}; ['amanirenas', 'meilin', 'thandeka', 'jabari', 'vael'].forEach(k => { const im = new Image(); im.onload = () => { PORT[k] = im; }; im.src = `assets/v2/p_${k}.webp`; });
 function spriteImg(n) {
+  const vi = n.indexOf('~'); if (vi > 0) { const b = n.slice(0, vi), base = spriteImg(b); return base ? tinted(b + '#', base, E_VAR[+n.slice(vi + 1)] || '') : null; }
   if (SPRITE_VARIANTS[n]) { const [b, f] = SPRITE_VARIANTS[n]; return IMG[b] ? tinted(b, IMG[b], f) : null; }
   if (IMG[n]) { if (n.startsWith('t_') && typeof FAC === 'function') { const fk = TINT_FAC || (typeof P !== 'undefined' && P && P.faction); const f = fk && FAC(fk).tint; if (f) return tinted(n, IMG[n], f); } return IMG[n]; }
   const m = /^(hs?_)([a-z]+)(\d)$/.exec(n); if (!m || typeof HERO_FAC !== 'function') return null; const hf = HERO_FAC(m[2]); if (!hf || hf.hero.spr === m[2]) return null;
@@ -41,7 +46,20 @@ function drawSprite(ctx, n, x, y, h, flip, alpha) {
   return true;
 }
 // head crop of a sprite for dock portraits (top fraction of the image)
+function drawPortrait(ctx, k, x, y, s) { const im = PORT[k]; if (!im) return false;
+  ctx.save(); ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, 7); ctx.clip(); const c = im.naturalWidth * 0.62, sx = (im.naturalWidth - c) / 2;
+  ctx.drawImage(im, sx, im.naturalHeight * 0.04, c, c, x, y, s, s); ctx.restore();
+  ctx.strokeStyle = 'rgba(242,193,78,0.85)'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, 7); ctx.stroke(); return true; }
+// faction emblems (vector, under the portrait): sun disk, jade seal, rune stone, brass gear, star sigil
+function drawEmblem(ctx, fk, cx, cy, r) { ctx.save(); ctx.translate(cx, cy); ctx.lineWidth = 1.6; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 3;
+  if (fk === 'sun') { ctx.strokeStyle = ctx.fillStyle = '#F2B134'; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.62, Math.sin(a) * r * 0.62); ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); ctx.stroke(); } ctx.beginPath(); ctx.arc(0, 0, r * 0.5, 0, 7); ctx.fill(); }
+  else if (fk === 'jade') { ctx.fillStyle = '#3FAF7A'; ctx.fillRect(-r * 0.75, -r * 0.75, r * 1.5, r * 1.5); ctx.strokeStyle = '#d8f5e3'; ctx.strokeRect(-r * 0.5, -r * 0.5, r, r); ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.moveTo(0, -r * 0.5); ctx.lineTo(0, r * 0.5); ctx.stroke(); }
+  else if (fk === 'stone') { ctx.fillStyle = '#5d6b78'; ctx.beginPath(); ctx.moveTo(-r * 0.55, r); ctx.lineTo(-r * 0.7, -r * 0.4); ctx.lineTo(0, -r); ctx.lineTo(r * 0.7, -r * 0.5); ctx.lineTo(r * 0.55, r); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#7ff3e6'; ctx.beginPath(); ctx.moveTo(-r * 0.15, r * 0.6); ctx.lineTo(-r * 0.15, -r * 0.6); ctx.lineTo(r * 0.3, -r * 0.2); ctx.lineTo(-r * 0.15, r * 0.05); ctx.lineTo(r * 0.3, r * 0.5); ctx.stroke(); }
+  else if (fk === 'forge') { ctx.fillStyle = '#C8893A'; ctx.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, rr = i % 2 ? r * 0.72 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.fillStyle = '#3a2416'; ctx.beginPath(); ctx.arc(0, 0, r * 0.3, 0, 7); ctx.fill(); }
+  else { ctx.fillStyle = '#9fc8ff'; ctx.beginPath(); for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8 - Math.PI / 2, rr = i % 2 ? r * 0.3 : (i % 4 ? r * 0.65 : r); ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = 'rgba(159,200,255,0.6)'; ctx.beginPath(); ctx.arc(0, 0, r * 1.05, 0, 7); ctx.stroke(); }
+  ctx.restore(); }
 function drawHead(ctx, n, x, y, s) {
+  { const m = /^hs?_([a-z]+)\d$/.exec(n); if (m && drawPortrait(ctx, m[1], x, y, s)) return true; }
   const im = spriteImg(n); if (!im) return false; const iw = im.naturalWidth, ih = im.naturalHeight;
   const cw = Math.min(iw, ih * 0.36), ch = cw; const sx = (iw - cw) / 2;
   ctx.save(); ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, 7); ctx.clip();

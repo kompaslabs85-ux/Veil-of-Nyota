@@ -5,9 +5,9 @@ const STR = {
   factions: {
     sun: { name: 'Sunveil', blurb: 'Solar priests of the pyramid city. Molten splash and raw burst.', tradeoff: 'Sun-fever: towers overheat.' },
     jade: { name: 'Jade Court', blurb: 'Scholars of silk and lantern-ink. Bind the lane, hold the line. Shrine +5 lives.', tradeoff: 'Written edict: towers can never be sold.' },
-    stone: { name: 'Frostmark', blurb: 'Runesmiths and shieldwalls of the fjords. Pierce armour, hold the line. Shrine +5 lives.', tradeoff: 'Rune-bound: towers can never be sold.' },
-    forge: { name: 'Foundry Row', blurb: 'Steam, brass and clockwork. Splash shells and raw burst.', tradeoff: 'Pressure: towers overheat.' },
-    star: { name: 'Starfall Ascendancy', blurb: 'Hard-light engines from orbit. Precise beams and flak.', tradeoff: 'Thermal limit: towers overheat.' },
+    stone: { name: 'Frostmark', blurb: 'Runesmiths and shieldwalls of the fjords. Pierce armour, hold the line. Shrine +5 lives.', tradeoff: 'Rune-bound: +10% cost, +20% damage.' },
+    forge: { name: 'Foundry Row', blurb: 'Steam, brass and clockwork. Splash shells and raw burst.', tradeoff: 'Pressure: Steam Hammer costs 40 gold.' },
+    star: { name: 'Starfall Ascendancy', blurb: 'Hard-light engines from orbit. Precise beams and flak.', tradeoff: 'Thermal limit: Lance recharges 60% slower.' },
   },
 
   brief: {
